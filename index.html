@@ -1011,7 +1011,7 @@ cat > /home/claude/financial_calendar_cloud.html << 'ENDOFFILE'
 
             authorize() {
                 document.getElementById('authSpinner').style.display = 'block';
-                gapi.auth2.getAuthInstance().signIn().catch(error => {
+                gapi.auth2.getAuthInstance().signIn({prompt: 'select_account'}).catch(error => {
                     console.error('Sign-in error:', error);
                     document.getElementById('authSpinner').style.display = 'none';
                     document.getElementById('authError').style.display = 'block';
