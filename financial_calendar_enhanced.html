@@ -1,0 +1,2869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Financial Calendar - Enhanced</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --background: #f9fafb;
+            --surface: #ffffff;
+            --border: #e5e7eb;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --income-color: #10b981;
+            --expense-color: #ef4444;
+            --rent-color: #f97316;
+            --debt-color: #dc2626;
+            --subscription-color: #8b5cf6;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--surface);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .app-header {
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+            padding: 1rem 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .app-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .app-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .combined-mode-badge {
+            display: inline-block;
+            background: var(--warning-color);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        /* Menu Bar */
+        .menu-bar {
+            background: #1f2937;
+            color: white;
+            padding: 0.5rem 1rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .menu-item {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .menu-item:hover {
+            background: #374151;
+        }
+
+        /* Tab Navigation */
+        .tab-navigation {
+            display: flex;
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+            min-width: max-content;
+        }
+
+        .tab-button:hover {
+            background: var(--background);
+        }
+
+        .tab-button.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: #1f2937;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            position: sticky;
+            bottom: 0;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-warning {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.625rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-control.error {
+            border-color: var(--danger-color);
+        }
+
+        .error-message {
+            color: var(--danger-color);
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        select.form-control {
+            cursor: pointer;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 8px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-content.large {
+            max-width: 1200px;
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        /* Profile Cards for Selection */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .profile-card {
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .profile-card:hover {
+            border-color: var(--primary-color);
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .profile-card.selected {
+            border-color: var(--primary-color);
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .profile-card-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-card-stats {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Expense Merge Interface */
+        .merge-container {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .merge-group {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            background: var(--background);
+        }
+
+        .merge-group-header {
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .expense-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--surface);
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+
+        .expense-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .expense-details {
+            flex: 1;
+        }
+
+        .expense-name {
+            font-weight: 500;
+        }
+
+        .expense-meta {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .expense-amount {
+            font-weight: 600;
+            color: var(--danger-color);
+        }
+
+        .profile-badge {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Tab 1: Data Management Layout */
+        .data-management-layout {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr 1fr;
+            gap: 1.5rem;
+            height: calc(100vh - 250px);
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .panel-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            color: var(--text-primary);
+        }
+
+        /* Data Overview Tree */
+        .data-tree {
+            list-style: none;
+        }
+
+        .tree-category {
+            margin-bottom: 1rem;
+        }
+
+        .tree-category-header {
+            font-weight: 600;
+            padding: 0.75rem;
+            background: var(--background);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tree-item {
+            padding: 0.75rem;
+            margin: 0.25rem 0 0.25rem 1.5rem;
+            border-left: 2px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s;
+            border-radius: 4px;
+        }
+
+        .tree-item:hover {
+            background: var(--background);
+        }
+
+        .tree-item.selected {
+            background: rgba(37, 99, 235, 0.1);
+            border-left-color: var(--primary-color);
+        }
+
+        .tree-item-name {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .tree-item-details {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Net Worth Dashboard */
+        .net-worth-display {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--primary-color), #1d4ed8);
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .net-worth-label {
+            font-size: 0.875rem;
+            opacity: 0.9;
+            margin-bottom: 0.5rem;
+        }
+
+        .net-worth-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .net-worth-breakdown {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .breakdown-item {
+            text-align: center;
+        }
+
+        .breakdown-label {
+            font-size: 0.75rem;
+            opacity: 0.9;
+        }
+
+        .breakdown-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        /* Calendar Styles */
+        .calendar-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .calendar-nav {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .calendar-month {
+            font-size: 1.25rem;
+            font-weight: 600;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .calendar-filters {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .calendar-header {
+            background: #1f2937;
+            color: white;
+            padding: 0.75rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .calendar-day {
+            background: var(--surface);
+            min-height: 120px;
+            padding: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .calendar-day.other-month {
+            background: var(--background);
+            opacity: 0.5;
+        }
+
+        .calendar-day.warning {
+            background: #fef2f2;
+        }
+
+        .day-number {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .day-transactions {
+            font-size: 0.7rem;
+            max-height: 60px;
+            overflow-y: auto;
+        }
+
+        .transaction-item {
+            padding: 0.125rem 0.25rem;
+            margin-bottom: 0.125rem;
+            border-radius: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .transaction-income { background: rgba(16, 185, 129, 0.2); }
+        .transaction-expense { background: rgba(239, 68, 68, 0.2); }
+        .transaction-rent { background: rgba(249, 115, 22, 0.2); }
+        .transaction-debt { background: rgba(220, 38, 38, 0.2); }
+
+        .day-summary {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.7rem;
+        }
+
+        .balance-positive {
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        .balance-negative {
+            color: var(--danger-color);
+            font-weight: 600;
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 2rem;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .metric-subtext {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        /* Hidden file input */
+        #fileInput {
+            display: none;
+        }
+
+        /* Step Indicator */
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--border);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .step.active .step-number {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .step-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .step.active .step-label {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .data-management-layout {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .panel {
+                height: auto;
+                max-height: 500px;
+            }
+
+            .calendar-grid {
+                grid-template-columns: repeat(7, 1fr);
+                font-size: 0.75rem;
+            }
+
+            .calendar-day {
+                min-height: 80px;
+                padding: 0.25rem;
+            }
+
+            .day-number {
+                font-size: 0.75rem;
+            }
+
+            .day-transactions {
+                font-size: 0.65rem;
+                max-height: 40px;
+            }
+
+            .chart-container {
+                height: 300px;
+            }
+
+            .app-title {
+                font-size: 1.25rem;
+            }
+
+            .menu-bar {
+                font-size: 0.75rem;
+            }
+
+            .tab-button {
+                font-size: 0.875rem;
+                padding: 0.75rem;
+            }
+
+            .net-worth-value {
+                font-size: 2rem;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .profile-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Checkbox Styling */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1001;
+            display: none;
+        }
+
+        .context-menu.active {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background: var(--background);
+        }
+
+        /* Alert Box */
+        .alert {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-info {
+            background: rgba(37, 99, 235, 0.1);
+            border: 1px solid rgba(37, 99, 235, 0.3);
+            color: var(--primary-color);
+        }
+
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: var(--warning-color);
+        }
+
+        /* Utility Classes */
+        .text-success { color: var(--success-color); }
+        .text-danger { color: var(--danger-color); }
+        .text-muted { color: var(--text-secondary); }
+        .mt-1 { margin-top: 0.5rem; }
+        .mt-2 { margin-top: 1rem; }
+        .mb-1 { margin-bottom: 0.5rem; }
+        .mb-2 { margin-bottom: 1rem; }
+        .text-center { text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="app-title">
+                Personal Financial Calendar
+                <span class="combined-mode-badge" id="combinedBadge" style="display: none;">COMBINED MODE</span>
+            </div>
+            <div class="app-subtitle" id="profileSubtitle">Current Profile: Loading...</div>
+        </header>
+
+        <!-- Menu Bar -->
+        <nav class="menu-bar">
+            <div class="menu-item" onclick="app.showProfileManager()">Manage Profiles</div>
+            <div class="menu-item" onclick="app.exportCurrentProfile()">Export Profile</div>
+            <div class="menu-item" onclick="app.showImportProfile()">Import Profile</div>
+            <div class="menu-item" onclick="app.showCombinedMode()">Combined Finances</div>
+            <div class="menu-item" onclick="app.saveCurrentProfile()">Save (Ctrl+S)</div>
+            <div class="menu-item" onclick="app.showSettings()">Settings</div>
+            <div class="menu-item" onclick="app.showAuditLog()">View Audit Log</div>
+            <div class="menu-item" onclick="app.exitCombinedMode()" id="exitCombinedBtn" style="display: none; background: var(--danger-color);">Exit Combined Mode</div>
+        </nav>
+
+        <!-- Tab Navigation -->
+        <nav class="tab-navigation">
+            <button class="tab-button active" data-tab="data">Data Management</button>
+            <button class="tab-button" data-tab="calendar">Visual Calendar</button>
+            <button class="tab-button" data-tab="reports">Reports & Analysis</button>
+        </nav>
+
+        <!-- Tab 1: Data Management -->
+        <div id="tab-data" class="tab-content active">
+            <div class="data-management-layout">
+                <!-- Left Panel: Data Entry -->
+                <div class="panel">
+                    <h2 class="panel-title">Data Entry</h2>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Item Type</label>
+                        <select id="itemType" class="form-control" onchange="app.updateFormFields()">
+                            <option value="income">Income Stream</option>
+                            <option value="expense">Expense/Liability</option>
+                            <option value="asset">Asset</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Item Name</label>
+                        <input type="text" id="itemName" class="form-control" placeholder="e.g., Paycheck, Rent">
+                        <div class="error-message" id="itemNameError"></div>
+                    </div>
+
+                    <div id="financialFields">
+                        <div class="form-group">
+                            <label class="form-label">Amount ($)</label>
+                            <input type="number" id="itemAmount" class="form-control" step="0.01" placeholder="1500.00">
+                            <div class="error-message" id="itemAmountError"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Frequency</label>
+                            <select id="itemFrequency" class="form-control">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="biweekly">Bi-Weekly</option>
+                                <option value="monthly" selected>Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="annually">Annually</option>
+                                <option value="onetime">One-Time</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" id="itemStartDate" class="form-control">
+                            <div class="error-message" id="itemStartDateError"></div>
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="hasEndDate" onchange="app.toggleEndDate()">
+                            <label>Set an End Date</label>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">End Date</label>
+                            <input type="date" id="itemEndDate" class="form-control" disabled>
+                            <div class="error-message" id="itemEndDateError"></div>
+                        </div>
+
+                        <div class="form-group" id="categoryGroup">
+                            <label class="form-label">Category</label>
+                            <select id="itemCategory" class="form-control">
+                                <option value="core-income">Core Income</option>
+                                <option value="extra-income">Extra Income</option>
+                                <option value="rent">Rent/Mortgage</option>
+                                <option value="debt">Debt Payments</option>
+                                <option value="subscription">Subscriptions</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="assetFields" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">Current Value ($)</label>
+                            <input type="number" id="assetValue" class="form-control" step="0.01" placeholder="25000.00">
+                            <div class="error-message" id="assetValueError"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Asset Type</label>
+                            <select id="assetType" class="form-control">
+                                <option value="liquid">Liquid (Savings)</option>
+                                <option value="investment">Investment (Stocks)</option>
+                                <option value="physical">Physical (Home Equity)</option>
+                            </select>
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="isStartingBalance">
+                            <label>Use as Starting Cash Balance</label>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+                        <button class="btn btn-primary" onclick="app.addOrUpdateItem()" id="addButton">Add Item</button>
+                        <button class="btn btn-secondary" onclick="app.clearForm()">Clear</button>
+                    </div>
+                </div>
+
+                <!-- Center Panel: Data Overview -->
+                <div class="panel">
+                    <h2 class="panel-title">Data Overview</h2>
+                    <ul class="data-tree" id="dataTree"></ul>
+                </div>
+
+                <!-- Right Panel: Net Worth Dashboard -->
+                <div class="panel">
+                    <h2 class="panel-title">Profile & Net Worth</h2>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Current Profile</label>
+                        <select id="profileSelector" class="form-control" onchange="app.switchProfile()"></select>
+                    </div>
+
+                    <div class="net-worth-display">
+                        <div class="net-worth-label">Projected Net Worth</div>
+                        <div class="net-worth-value" id="netWorthValue">$0.00</div>
+                        <div class="net-worth-breakdown">
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">Total Assets</div>
+                                <div class="breakdown-value text-success" id="totalAssets">$0.00</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">Total Liabilities</div>
+                                <div class="breakdown-value text-danger" id="totalLiabilities">$0.00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metrics-grid" style="grid-template-columns: 1fr;">
+                        <div>
+                            <div class="metric-label">Est. Monthly Income</div>
+                            <div class="metric-value text-success" id="monthlyIncome" style="font-size: 1.5rem;">$0.00</div>
+                        </div>
+                        <div>
+                            <div class="metric-label">Est. Monthly Expenses</div>
+                            <div class="metric-value text-danger" id="monthlyExpenses" style="font-size: 1.5rem;">$0.00</div>
+                        </div>
+                        <div>
+                            <div class="metric-label">Est. Monthly Cash Flow</div>
+                            <div class="metric-value" id="monthlyCashFlow" style="font-size: 1.5rem;">$0.00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Calendar -->
+        <div id="tab-calendar" class="tab-content">
+            <div class="calendar-controls">
+                <div class="calendar-nav">
+                    <button class="btn btn-secondary" onclick="app.previousMonth()">◀ Prev</button>
+                    <div class="calendar-month" id="calendarMonth">November 2025</div>
+                    <button class="btn btn-secondary" onclick="app.nextMonth()">Next ▶</button>
+                    <button class="btn btn-primary" onclick="app.goToToday()">Today</button>
+                </div>
+                <div class="calendar-filters">
+                    <label class="filter-checkbox">
+                        <input type="checkbox" checked data-category="core-income" onchange="app.updateCalendar()"> Core Income
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" checked data-category="extra-income" onchange="app.updateCalendar()"> Extra Income
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" checked data-category="rent" onchange="app.updateCalendar()"> Rent/Mortgage
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" checked data-category="debt" onchange="app.updateCalendar()"> Debt Payments
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" checked data-category="subscription" onchange="app.updateCalendar()"> Subscriptions
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" checked data-category="other" onchange="app.updateCalendar()"> Other
+                    </label>
+                </div>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+
+        <!-- Tab 3: Reports -->
+        <div id="tab-reports" class="tab-content">
+            <h2 class="panel-title">Cash Flow Forecast</h2>
+            <div class="form-group" style="max-width: 300px;">
+                <label class="form-label">Forecast Horizon</label>
+                <select id="forecastHorizon" class="form-control" onchange="app.updateForecastChart()">
+                    <option value="1">1 Month</option>
+                    <option value="3" selected>3 Months</option>
+                    <option value="6">6 Months</option>
+                    <option value="12">1 Year</option>
+                </select>
+            </div>
+            <div class="chart-container">
+                <canvas id="forecastChart"></canvas>
+            </div>
+
+            <h2 class="panel-title">Financial Health Metrics</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Savings Rate</div>
+                    <div class="metric-value" id="savingsRate">0%</div>
+                    <div class="metric-subtext">Monthly Cash Flow / Monthly Income</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Debt-to-Income Ratio</div>
+                    <div class="metric-value" id="debtToIncome">0%</div>
+                    <div class="metric-subtext">Monthly Debt Payments / Monthly Income</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Average Daily Balance</div>
+                    <div class="metric-value" id="avgDailyBalance">$0</div>
+                    <div class="metric-subtext">Over next 30 days</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span id="statusMessage">Ready</span>
+            <span id="lastSaved">Last saved: Never</span>
+        </div>
+    </div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="fileInput" accept=".json" multiple>
+
+    <!-- Setup Wizard Modal -->
+    <div id="setupWizard" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Welcome to Personal Financial Calendar</h2>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem;">Thank you for using the Personal Financial Calendar. This application will store all your data securely in your browser's local storage.</p>
+                <p style="margin-bottom: 1.5rem;">Let's create your first profile to get started.</p>
+                
+                <div class="form-group">
+                    <label class="form-label">Profile Name</label>
+                    <input type="text" id="firstProfileName" class="form-control" placeholder="e.g., My Main Budget" value="My Main Budget">
+                    <div class="error-message" id="firstProfileError"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="app.completeSetup()">Finish Setup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Manager Modal -->
+    <div id="profileManagerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Manage Profiles</h2>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Create New Profile</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="newProfileName" class="form-control" placeholder="Profile name">
+                        <button class="btn btn-primary" onclick="app.createNewProfile()">Create</button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Duplicate Profile</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select id="duplicateSource" class="form-control"></select>
+                        <input type="text" id="duplicateName" class="form-control" placeholder="New name">
+                        <button class="btn btn-primary" onclick="app.duplicateProfile()">Duplicate</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Delete Profile</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select id="deleteProfileSelect" class="form-control"></select>
+                        <button class="btn btn-danger" onclick="app.deleteProfile()">Delete</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="app.closeModal('profileManagerModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Combined Mode Modal -->
+    <div id="combinedModeModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 class="modal-title">Combined Finances Setup</h2>
+            </div>
+            <div class="modal-body">
+                <!-- Step Indicator -->
+                <div class="step-indicator">
+                    <div class="step active" id="step1Indicator">
+                        <div class="step-number">1</div>
+                        <div class="step-label">Select Profiles</div>
+                    </div>
+                    <div class="step" id="step2Indicator">
+                        <div class="step-number">2</div>
+                        <div class="step-label">Merge Expenses</div>
+                    </div>
+                </div>
+
+                <!-- Step 1: Profile Selection -->
+                <div id="combinedStep1">
+                    <div class="alert alert-info">
+                        <strong>Step 1:</strong> Select 2 or more profiles to combine. You can also load a previously saved combined profile.
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Or Load Saved Combined Profile</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <select id="savedCombinedSelect" class="form-control">
+                                <option value="">-- Select a saved combined profile --</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="app.loadSavedCombined()">Load</button>
+                        </div>
+                    </div>
+
+                    <hr style="margin: 1.5rem 0;">
+
+                    <h3 style="margin-bottom: 1rem;">Select Individual Profiles to Combine:</h3>
+                    <div class="profile-grid" id="profileSelectorGrid"></div>
+                </div>
+
+                <!-- Step 2: Expense Merging -->
+                <div id="combinedStep2" style="display: none;">
+                    <div class="alert alert-warning">
+                        <strong>Step 2:</strong> Review all expenses from the selected profiles. Check the boxes next to expenses that should be <strong>merged together</strong> (like shared rent). Unchecked expenses will remain separate.
+                    </div>
+
+                    <div class="merge-container" id="mergeContainer"></div>
+
+                    <div class="form-group mt-2">
+                        <label class="form-label">Save This Combined Profile As:</label>
+                        <input type="text" id="combinedProfileName" class="form-control" placeholder="e.g., Me & Partner - Combined">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="backBtn" style="display: none;" onclick="app.combinedStepBack()">Back</button>
+                <button class="btn btn-primary" id="nextBtn" onclick="app.combinedStepNext()">Next: Review Expenses</button>
+                <button class="btn btn-success" id="finishCombinedBtn" style="display: none;" onclick="app.finishCombined()">Create Combined Profile</button>
+                <button class="btn btn-secondary" onclick="app.closeModal('combinedModeModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Settings</h2>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Safety Buffer ($)</label>
+                    <input type="number" id="safetyBuffer" class="form-control" step="0.01" value="500">
+                    <small class="text-muted">Alert when balance drops below this amount</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Starting Cash Balance ($)</label>
+                    <input type="number" id="startingBalance" class="form-control" step="0.01" value="0">
+                    <small class="text-muted">Your current cash on hand</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="app.saveSettings()">Save Settings</button>
+                <button class="btn btn-secondary" onclick="app.closeModal('settingsModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Log Modal -->
+    <div id="auditLogModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Audit Log</h2>
+            </div>
+            <div class="modal-body">
+                <pre id="auditLogContent" style="background: #f9fafb; padding: 1rem; border-radius: 4px; max-height: 400px; overflow-y: auto; font-size: 0.75rem;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="app.closeModal('auditLogModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            currentProfile: null,
+            profiles: {},
+            combinedProfiles: {}, // Store saved combined profiles
+            settings: {
+                safetyBuffer: 500,
+                startingBalance: 0,
+                lastUsedProfile: null
+            },
+            auditLog: [],
+            editingItemId: null,
+            currentMonth: new Date().getMonth(),
+            currentYear: new Date().getFullYear(),
+            forecastChart: null,
+            
+            // Combined mode variables
+            isCombinedMode: false,
+            selectedProfilesForMerge: [],
+            mergeGroups: {}, // Stores which expenses are merged together
+            currentCombinedProfile: null,
+            virtualCombinedData: null, // The merged data structure
+
+            // Initialize application
+            init() {
+                this.log('INFO', 'Application started');
+                
+                // Check if first run
+                const hasProfiles = localStorage.getItem('fc_profiles');
+                if (!hasProfiles) {
+                    this.showSetupWizard();
+                } else {
+                    this.loadData();
+                    this.setupEventListeners();
+                    this.renderAll();
+                }
+
+                // Set today's date as default
+                document.getElementById('itemStartDate').valueAsDate = new Date();
+
+                // Setup file input handler
+                document.getElementById('fileInput').addEventListener('change', (e) => {
+                    this.handleFileImport(e.target.files);
+                });
+            },
+
+            // Setup event listeners
+            setupEventListeners() {
+                // Tab navigation
+                document.querySelectorAll('.tab-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                        
+                        e.target.classList.add('active');
+                        const tabId = e.target.dataset.tab;
+                        document.getElementById(`tab-${tabId}`).classList.add('active');
+                        
+                        if (tabId === 'calendar') {
+                            this.updateCalendar();
+                        } else if (tabId === 'reports') {
+                            this.updateForecastChart();
+                        }
+                    });
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey && e.key === 's') {
+                        e.preventDefault();
+                        this.saveCurrentProfile();
+                    }
+                });
+
+                // Auto-save on visibility change
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden && !this.isCombinedMode) {
+                        this.saveCurrentProfile();
+                    }
+                });
+            },
+
+            // Show setup wizard
+            showSetupWizard() {
+                document.getElementById('setupWizard').classList.add('active');
+            },
+
+            // Complete setup
+            completeSetup() {
+                const profileName = document.getElementById('firstProfileName').value.trim();
+                if (!profileName) {
+                    this.showError('firstProfileError', 'Profile name is required');
+                    return;
+                }
+
+                this.profiles[profileName] = {
+                    name: profileName,
+                    assets: [],
+                    incomes: [],
+                    expenses: []
+                };
+
+                this.settings.lastUsedProfile = profileName;
+                this.currentProfile = profileName;
+
+                this.saveData();
+                this.log('INFO', `First profile '${profileName}' created`);
+                
+                document.getElementById('setupWizard').classList.remove('active');
+                this.setupEventListeners();
+                this.renderAll();
+            },
+
+            // Load data from localStorage
+            loadData() {
+                try {
+                    const profilesData = localStorage.getItem('fc_profiles');
+                    if (profilesData) {
+                        this.profiles = JSON.parse(profilesData);
+                    }
+
+                    const combinedData = localStorage.getItem('fc_combined_profiles');
+                    if (combinedData) {
+                        this.combinedProfiles = JSON.parse(combinedData);
+                    }
+
+                    const settingsData = localStorage.getItem('fc_settings');
+                    if (settingsData) {
+                        this.settings = { ...this.settings, ...JSON.parse(settingsData) };
+                    }
+
+                    const auditLogData = localStorage.getItem('fc_auditlog');
+                    if (auditLogData) {
+                        this.auditLog = JSON.parse(auditLogData);
+                    }
+
+                    // Load last used profile
+                    this.currentProfile = this.settings.lastUsedProfile || Object.keys(this.profiles)[0];
+                    
+                    if (this.currentProfile) {
+                        this.log('INFO', `Profile '${this.currentProfile}' loaded`);
+                    }
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    this.log('ERROR', `Failed to load data: ${error.message}`);
+                }
+            },
+
+            // Save data to localStorage
+            saveData() {
+                try {
+                    localStorage.setItem('fc_profiles', JSON.stringify(this.profiles));
+                    localStorage.setItem('fc_combined_profiles', JSON.stringify(this.combinedProfiles));
+                    localStorage.setItem('fc_settings', JSON.stringify(this.settings));
+                    localStorage.setItem('fc_auditlog', JSON.stringify(this.auditLog));
+                    
+                    const now = new Date().toLocaleTimeString();
+                    document.getElementById('lastSaved').textContent = `Last saved: ${now}`;
+                    this.setStatus('Saved successfully');
+                } catch (error) {
+                    console.error('Error saving data:', error);
+                    this.log('ERROR', `Failed to save data: ${error.message}`);
+                    this.setStatus('Error saving data', 'error');
+                }
+            },
+
+            // Save current profile
+            saveCurrentProfile() {
+                if (this.currentProfile && !this.isCombinedMode) {
+                    this.saveData();
+                    this.log('INFO', `Profile '${this.currentProfile}' saved manually`);
+                }
+            },
+
+            // Export current profile
+            exportCurrentProfile() {
+                if (!this.currentProfile) {
+                    alert('No profile loaded');
+                    return;
+                }
+
+                const profile = this.profiles[this.currentProfile];
+                const dataStr = JSON.stringify(profile, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = `${this.currentProfile.replace(/[^a-z0-9]/gi, '_')}_profile.json`;
+                link.click();
+                
+                this.log('INFO', `Profile '${this.currentProfile}' exported`);
+                this.setStatus(`Exported: ${this.currentProfile}`);
+            },
+
+            // Show import profile dialog
+            showImportProfile() {
+                document.getElementById('fileInput').click();
+            },
+
+            // Handle file import
+            handleFileImport(files) {
+                if (files.length === 0) return;
+
+                Array.from(files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const profile = JSON.parse(e.target.result);
+                            
+                            // Validate profile structure
+                            if (!profile.name || !profile.hasOwnProperty('assets') || 
+                                !profile.hasOwnProperty('incomes') || !profile.hasOwnProperty('expenses')) {
+                                alert(`Invalid profile format in file: ${file.name}`);
+                                return;
+                            }
+
+                            // Check if profile name already exists
+                            let profileName = profile.name;
+                            if (this.profiles[profileName]) {
+                                const timestamp = new Date().getTime();
+                                profileName = `${profile.name} (Imported ${timestamp})`;
+                                profile.name = profileName;
+                            }
+
+                            this.profiles[profileName] = profile;
+                            this.saveData();
+                            this.log('INFO', `Profile '${profileName}' imported from ${file.name}`);
+                            this.setStatus(`Imported: ${profileName}`);
+                            this.renderProfileSelector();
+                            
+                        } catch (error) {
+                            alert(`Error importing file ${file.name}: ${error.message}`);
+                            this.log('ERROR', `Failed to import ${file.name}: ${error.message}`);
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+
+                // Clear file input
+                document.getElementById('fileInput').value = '';
+            },
+
+            // Combined Mode Functions
+            showCombinedMode() {
+                this.selectedProfilesForMerge = [];
+                this.mergeGroups = {};
+                
+                // Reset steps
+                document.getElementById('combinedStep1').style.display = 'block';
+                document.getElementById('combinedStep2').style.display = 'none';
+                document.getElementById('backBtn').style.display = 'none';
+                document.getElementById('nextBtn').style.display = 'inline-flex';
+                document.getElementById('finishCombinedBtn').style.display = 'none';
+                
+                // Reset step indicators
+                document.getElementById('step1Indicator').classList.add('active');
+                document.getElementById('step2Indicator').classList.remove('active');
+                
+                this.renderProfileSelectorGrid();
+                this.renderSavedCombinedSelector();
+                document.getElementById('combinedModeModal').classList.add('active');
+            },
+
+            renderProfileSelectorGrid() {
+                const profiles = Object.keys(this.profiles);
+                let html = '';
+
+                profiles.forEach(profileName => {
+                    const profile = this.profiles[profileName];
+                    const isSelected = this.selectedProfilesForMerge.includes(profileName);
+                    const itemCount = (profile.incomes?.length || 0) + (profile.expenses?.length || 0) + (profile.assets?.length || 0);
+                    
+                    html += `
+                        <div class="profile-card ${isSelected ? 'selected' : ''}" onclick="app.toggleProfileSelection('${profileName}')">
+                            <div class="profile-card-name">${profileName}</div>
+                            <div class="profile-card-stats">
+                                ${profile.incomes?.length || 0} incomes • 
+                                ${profile.expenses?.length || 0} expenses • 
+                                ${profile.assets?.length || 0} assets
+                            </div>
+                        </div>
+                    `;
+                });
+
+                document.getElementById('profileSelectorGrid').innerHTML = html;
+            },
+
+            renderSavedCombinedSelector() {
+                const saved = Object.keys(this.combinedProfiles);
+                let html = '<option value="">-- Select a saved combined profile --</option>';
+                
+                saved.forEach(name => {
+                    html += `<option value="${name}">${name}</option>`;
+                });
+
+                document.getElementById('savedCombinedSelect').innerHTML = html;
+            },
+
+            toggleProfileSelection(profileName) {
+                const index = this.selectedProfilesForMerge.indexOf(profileName);
+                if (index > -1) {
+                    this.selectedProfilesForMerge.splice(index, 1);
+                } else {
+                    this.selectedProfilesForMerge.push(profileName);
+                }
+                this.renderProfileSelectorGrid();
+            },
+
+            combinedStepNext() {
+                if (this.selectedProfilesForMerge.length < 2) {
+                    alert('Please select at least 2 profiles to combine');
+                    return;
+                }
+
+                // Move to step 2
+                document.getElementById('combinedStep1').style.display = 'none';
+                document.getElementById('combinedStep2').style.display = 'block';
+                document.getElementById('backBtn').style.display = 'inline-flex';
+                document.getElementById('nextBtn').style.display = 'none';
+                document.getElementById('finishCombinedBtn').style.display = 'inline-flex';
+                
+                document.getElementById('step1Indicator').classList.remove('active');
+                document.getElementById('step2Indicator').classList.add('active');
+
+                this.renderMergeInterface();
+            },
+
+            combinedStepBack() {
+                document.getElementById('combinedStep1').style.display = 'block';
+                document.getElementById('combinedStep2').style.display = 'none';
+                document.getElementById('backBtn').style.display = 'none';
+                document.getElementById('nextBtn').style.display = 'inline-flex';
+                document.getElementById('finishCombinedBtn').style.display = 'none';
+                
+                document.getElementById('step1Indicator').classList.add('active');
+                document.getElementById('step2Indicator').classList.remove('active');
+            },
+
+            renderMergeInterface() {
+                // Collect all expenses and incomes from selected profiles
+                const allExpenses = [];
+                const allIncomes = [];
+
+                this.selectedProfilesForMerge.forEach(profileName => {
+                    const profile = this.profiles[profileName];
+                    
+                    profile.expenses?.forEach(expense => {
+                        allExpenses.push({
+                            ...expense,
+                            sourceProfile: profileName,
+                            originalId: expense.id
+                        });
+                    });
+
+                    profile.incomes?.forEach(income => {
+                        allIncomes.push({
+                            ...income,
+                            sourceProfile: profileName,
+                            originalId: income.id
+                        });
+                    });
+                });
+
+                // Group similar expenses for easy merging
+                const expensesByName = {};
+                allExpenses.forEach(expense => {
+                    const key = expense.name.toLowerCase();
+                    if (!expensesByName[key]) {
+                        expensesByName[key] = [];
+                    }
+                    expensesByName[key].push(expense);
+                });
+
+                let html = '';
+
+                // Render rent/mortgage separately
+                const rentExpenses = allExpenses.filter(e => e.category === 'rent');
+                if (rentExpenses.length > 0) {
+                    html += this.renderMergeGroup('Rent/Mortgage', rentExpenses, 'rent');
+                }
+
+                // Render debt payments
+                const debtExpenses = allExpenses.filter(e => e.category === 'debt');
+                if (debtExpenses.length > 0) {
+                    html += this.renderMergeGroup('Debt Payments', debtExpenses, 'debt');
+                }
+
+                // Render subscriptions
+                const subExpenses = allExpenses.filter(e => e.category === 'subscription');
+                if (subExpenses.length > 0) {
+                    html += this.renderMergeGroup('Subscriptions', subExpenses, 'subscription');
+                }
+
+                // Render other expenses
+                const otherExpenses = allExpenses.filter(e => e.category === 'other');
+                if (otherExpenses.length > 0) {
+                    html += this.renderMergeGroup('Other Expenses', otherExpenses, 'other');
+                }
+
+                // Show all incomes (these typically won't be merged)
+                if (allIncomes.length > 0) {
+                    html += `<div class="merge-group">
+                        <div class="merge-group-header">
+                            <span>Income Streams (will be kept separate)</span>
+                        </div>`;
+                    
+                    allIncomes.forEach(income => {
+                        html += `
+                            <div class="expense-item">
+                                <div class="expense-details">
+                                    <div class="expense-name">
+                                        ${income.name}
+                                        <span class="profile-badge">${income.sourceProfile}</span>
+                                    </div>
+                                    <div class="expense-meta">
+                                        ${income.frequency} • Starts: ${income.startDate}
+                                    </div>
+                                </div>
+                                <div class="expense-amount text-success">+${this.formatCurrency(income.amount)}</div>
+                            </div>
+                        `;
+                    });
+
+                    html += '</div>';
+                }
+
+                document.getElementById('mergeContainer').innerHTML = html;
+            },
+
+            renderMergeGroup(title, expenses, category) {
+                if (expenses.length === 0) return '';
+
+                let html = `<div class="merge-group">
+                    <div class="merge-group-header">
+                        <span>${title}</span>
+                        <button class="btn btn-sm btn-secondary" onclick="app.selectAllInGroup('${category}')">Select All to Merge</button>
+                    </div>`;
+
+                expenses.forEach(expense => {
+                    const checkboxId = `merge_${expense.sourceProfile}_${expense.originalId}`;
+                    html += `
+                        <div class="expense-item">
+                            <input type="checkbox" class="expense-checkbox merge-checkbox-${category}" 
+                                   id="${checkboxId}" 
+                                   data-profile="${expense.sourceProfile}" 
+                                   data-id="${expense.originalId}">
+                            <div class="expense-details">
+                                <div class="expense-name">
+                                    ${expense.name}
+                                    <span class="profile-badge">${expense.sourceProfile}</span>
+                                </div>
+                                <div class="expense-meta">
+                                    ${this.formatCurrency(expense.amount)} • ${expense.frequency} • Starts: ${expense.startDate}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+                return html;
+            },
+
+            selectAllInGroup(category) {
+                document.querySelectorAll(`.merge-checkbox-${category}`).forEach(cb => {
+                    cb.checked = true;
+                });
+            },
+
+            finishCombined() {
+                const combinedName = document.getElementById('combinedProfileName').value.trim();
+                if (!combinedName) {
+                    alert('Please enter a name for this combined profile');
+                    return;
+                }
+
+                // Collect merge selections
+                const mergeSelections = {};
+                document.querySelectorAll('.expense-checkbox:checked').forEach(cb => {
+                    const profileName = cb.dataset.profile;
+                    const itemId = cb.dataset.id;
+                    const key = `${profileName}_${itemId}`;
+                    mergeSelections[key] = true;
+                });
+
+                // Create combined profile configuration
+                const combinedConfig = {
+                    name: combinedName,
+                    sourceProfiles: this.selectedProfilesForMerge,
+                    mergeSelections: mergeSelections,
+                    created: new Date().toISOString()
+                };
+
+                // Save combined profile
+                this.combinedProfiles[combinedName] = combinedConfig;
+                this.saveData();
+
+                // Enter combined mode
+                this.enterCombinedMode(combinedConfig);
+                
+                this.closeModal('combinedModeModal');
+                this.log('INFO', `Combined profile '${combinedName}' created`);
+                this.setStatus(`Entered combined mode: ${combinedName}`);
+            },
+
+            loadSavedCombined() {
+                const selectedName = document.getElementById('savedCombinedSelect').value;
+                if (!selectedName) {
+                    alert('Please select a saved combined profile');
+                    return;
+                }
+
+                const combinedConfig = this.combinedProfiles[selectedName];
+                if (!combinedConfig) {
+                    alert('Combined profile not found');
+                    return;
+                }
+
+                // Verify all source profiles still exist
+                const missingProfiles = combinedConfig.sourceProfiles.filter(p => !this.profiles[p]);
+                if (missingProfiles.length > 0) {
+                    alert(`Cannot load: Missing profiles: ${missingProfiles.join(', ')}`);
+                    return;
+                }
+
+                this.enterCombinedMode(combinedConfig);
+                this.closeModal('combinedModeModal');
+                this.log('INFO', `Loaded combined profile '${selectedName}'`);
+                this.setStatus(`Loaded combined mode: ${selectedName}`);
+            },
+
+            enterCombinedMode(config) {
+                this.isCombinedMode = true;
+                this.currentCombinedProfile = config;
+                
+                // Build virtual combined data
+                this.virtualCombinedData = {
+                    name: config.name,
+                    assets: [],
+                    incomes: [],
+                    expenses: []
+                };
+
+                const mergedExpenseIds = new Set();
+
+                // Process each source profile
+                config.sourceProfiles.forEach(profileName => {
+                    const profile = this.profiles[profileName];
+
+                    // Add all assets
+                    profile.assets?.forEach(asset => {
+                        this.virtualCombinedData.assets.push({
+                            ...asset,
+                            sourceProfile: profileName,
+                            id: `${profileName}_${asset.id}`
+                        });
+                    });
+
+                    // Add all incomes
+                    profile.incomes?.forEach(income => {
+                        this.virtualCombinedData.incomes.push({
+                            ...income,
+                            sourceProfile: profileName,
+                            id: `${profileName}_${income.id}`
+                        });
+                    });
+
+                    // Process expenses (check for merging)
+                    profile.expenses?.forEach(expense => {
+                        const key = `${profileName}_${expense.id}`;
+                        
+                        if (config.mergeSelections[key]) {
+                            // This expense should be merged
+                            if (!mergedExpenseIds.has(expense.name)) {
+                                // First occurrence of this merged expense
+                                const mergedAmount = this.calculateMergedAmount(config, expense.name);
+                                this.virtualCombinedData.expenses.push({
+                                    ...expense,
+                                    amount: mergedAmount,
+                                    name: `${expense.name} (Shared)`,
+                                    sourceProfile: 'MERGED',
+                                    id: `merged_${expense.name.toLowerCase().replace(/\s+/g, '_')}`
+                                });
+                                mergedExpenseIds.add(expense.name);
+                            }
+                            // Skip subsequent occurrences
+                        } else {
+                            // Keep as separate expense
+                            this.virtualCombinedData.expenses.push({
+                                ...expense,
+                                sourceProfile: profileName,
+                                id: `${profileName}_${expense.id}`
+                            });
+                        }
+                    });
+                });
+
+                // Update UI
+                document.getElementById('combinedBadge').style.display = 'inline-block';
+                document.getElementById('exitCombinedBtn').style.display = 'block';
+                document.getElementById('profileSubtitle').textContent = 
+                    `Combined Mode: ${config.name} (${config.sourceProfiles.join(' + ')})`;
+
+                this.renderAll();
+            },
+
+            calculateMergedAmount(config, expenseName) {
+                let total = 0;
+                config.sourceProfiles.forEach(profileName => {
+                    const profile = this.profiles[profileName];
+                    profile.expenses?.forEach(expense => {
+                        const key = `${profileName}_${expense.id}`;
+                        if (config.mergeSelections[key] && expense.name === expenseName) {
+                            total += expense.amount;
+                        }
+                    });
+                });
+                return total;
+            },
+
+            exitCombinedMode() {
+                if (!confirm('Exit combined mode and return to single profile view?')) {
+                    return;
+                }
+
+                this.isCombinedMode = false;
+                this.currentCombinedProfile = null;
+                this.virtualCombinedData = null;
+                
+                document.getElementById('combinedBadge').style.display = 'none';
+                document.getElementById('exitCombinedBtn').style.display = 'none';
+                
+                this.log('INFO', 'Exited combined mode');
+                this.renderAll();
+            },
+
+            // Get current data source (either normal profile or combined)
+            getCurrentData() {
+                if (this.isCombinedMode) {
+                    return this.virtualCombinedData;
+                } else {
+                    return this.profiles[this.currentProfile];
+                }
+            },
+
+            // Logging
+            log(level, message) {
+                const timestamp = new Date().toISOString();
+                this.auditLog.push({ timestamp, level, message });
+                
+                // Keep only last 1000 entries
+                if (this.auditLog.length > 1000) {
+                    this.auditLog = this.auditLog.slice(-1000);
+                }
+
+                console.log(`[${timestamp}] ${level}: ${message}`);
+            },
+
+            // Set status message
+            setStatus(message, type = 'info') {
+                const statusEl = document.getElementById('statusMessage');
+                statusEl.textContent = message;
+                statusEl.style.color = type === 'error' ? 'var(--danger-color)' : 'white';
+                
+                setTimeout(() => {
+                    statusEl.textContent = 'Ready';
+                    statusEl.style.color = 'white';
+                }, 3000);
+            },
+
+            // Show/hide error messages
+            showError(elementId, message) {
+                const errorEl = document.getElementById(elementId);
+                const inputEl = document.getElementById(elementId.replace('Error', ''));
+                
+                errorEl.textContent = message;
+                errorEl.classList.add('show');
+                if (inputEl) inputEl.classList.add('error');
+            },
+
+            hideError(elementId) {
+                const errorEl = document.getElementById(elementId);
+                const inputEl = document.getElementById(elementId.replace('Error', ''));
+                
+                errorEl.classList.remove('show');
+                if (inputEl) inputEl.classList.remove('error');
+            },
+
+            // Form management
+            updateFormFields() {
+                const type = document.getElementById('itemType').value;
+                const financialFields = document.getElementById('financialFields');
+                const assetFields = document.getElementById('assetFields');
+
+                if (type === 'asset') {
+                    financialFields.style.display = 'none';
+                    assetFields.style.display = 'block';
+                } else {
+                    financialFields.style.display = 'block';
+                    assetFields.style.display = 'none';
+                    
+                    // Update category options based on type
+                    const categorySelect = document.getElementById('itemCategory');
+                    if (type === 'income') {
+                        categorySelect.innerHTML = `
+                            <option value="core-income">Core Income</option>
+                            <option value="extra-income">Extra Income</option>
+                        `;
+                    } else {
+                        categorySelect.innerHTML = `
+                            <option value="rent">Rent/Mortgage</option>
+                            <option value="debt">Debt Payments</option>
+                            <option value="subscription">Subscriptions</option>
+                            <option value="other">Other</option>
+                        `;
+                    }
+                }
+            },
+
+            toggleEndDate() {
+                const hasEndDate = document.getElementById('hasEndDate').checked;
+                document.getElementById('itemEndDate').disabled = !hasEndDate;
+            },
+
+            clearForm() {
+                document.getElementById('itemName').value = '';
+                document.getElementById('itemAmount').value = '';
+                document.getElementById('itemFrequency').value = 'monthly';
+                document.getElementById('itemStartDate').valueAsDate = new Date();
+                document.getElementById('hasEndDate').checked = false;
+                document.getElementById('itemEndDate').value = '';
+                document.getElementById('itemEndDate').disabled = true;
+                document.getElementById('assetValue').value = '';
+                document.getElementById('assetType').value = 'liquid';
+                document.getElementById('isStartingBalance').checked = false;
+                
+                this.editingItemId = null;
+                document.getElementById('addButton').textContent = 'Add Item';
+                
+                // Clear all errors
+                document.querySelectorAll('.error-message').forEach(el => el.classList.remove('show'));
+                document.querySelectorAll('.form-control').forEach(el => el.classList.remove('error'));
+            },
+
+            // Validate form data
+            validateItem(data) {
+                let isValid = true;
+
+                if (!data.name || data.name.trim() === '') {
+                    this.showError('itemNameError', 'Item name is required');
+                    isValid = false;
+                } else {
+                    this.hideError('itemNameError');
+                }
+
+                if (data.type !== 'asset') {
+                    if (!data.amount || data.amount <= 0) {
+                        this.showError('itemAmountError', 'Amount must be greater than 0');
+                        isValid = false;
+                    } else {
+                        this.hideError('itemAmountError');
+                    }
+
+                    if (!data.startDate) {
+                        this.showError('itemStartDateError', 'Start date is required');
+                        isValid = false;
+                    } else {
+                        this.hideError('itemStartDateError');
+                    }
+
+                    if (data.endDate && data.startDate && new Date(data.endDate) <= new Date(data.startDate)) {
+                        this.showError('itemEndDateError', 'End date must be after start date');
+                        isValid = false;
+                    } else {
+                        this.hideError('itemEndDateError');
+                    }
+                } else {
+                    if (!data.value || data.value <= 0) {
+                        this.showError('assetValueError', 'Asset value must be greater than 0');
+                        isValid = false;
+                    } else {
+                        this.hideError('assetValueError');
+                    }
+                }
+
+                return isValid;
+            },
+
+            // Add or update item
+            addOrUpdateItem() {
+                if (this.isCombinedMode) {
+                    alert('Cannot add/edit items in combined mode. Exit combined mode first.');
+                    return;
+                }
+
+                const type = document.getElementById('itemType').value;
+                const name = document.getElementById('itemName').value.trim();
+
+                let data = { type, name };
+
+                if (type === 'asset') {
+                    data.value = parseFloat(document.getElementById('assetValue').value) || 0;
+                    data.assetType = document.getElementById('assetType').value;
+                    data.isStartingBalance = document.getElementById('isStartingBalance').checked;
+                } else {
+                    data.amount = parseFloat(document.getElementById('itemAmount').value) || 0;
+                    data.frequency = document.getElementById('itemFrequency').value;
+                    data.startDate = document.getElementById('itemStartDate').value;
+                    data.endDate = document.getElementById('hasEndDate').checked ? 
+                                   document.getElementById('itemEndDate').value : null;
+                    data.category = document.getElementById('itemCategory').value;
+                }
+
+                if (!this.validateItem(data)) {
+                    return;
+                }
+
+                const profile = this.profiles[this.currentProfile];
+                
+                if (this.editingItemId !== null) {
+                    // Update existing item
+                    const listName = type === 'asset' ? 'assets' : (type === 'income' ? 'incomes' : 'expenses');
+                    const index = profile[listName].findIndex(item => item.id === this.editingItemId);
+                    
+                    if (index !== -1) {
+                        profile[listName][index] = { ...data, id: this.editingItemId };
+                        this.log('INFO', `Item '${name}' updated`);
+                        this.setStatus(`Updated: ${name}`);
+                    }
+                } else {
+                    // Add new item
+                    data.id = Date.now().toString();
+                    
+                    if (type === 'asset') {
+                        profile.assets.push(data);
+                    } else if (type === 'income') {
+                        profile.incomes.push(data);
+                    } else {
+                        profile.expenses.push(data);
+                    }
+                    
+                    this.log('INFO', `Item '${name}' added`);
+                    this.setStatus(`Added: ${name}`);
+                }
+
+                this.saveData();
+                this.clearForm();
+                this.renderAll();
+            },
+
+            // Delete item
+            deleteItem(id, itemName) {
+                if (this.isCombinedMode) {
+                    alert('Cannot delete items in combined mode. Exit combined mode first.');
+                    return;
+                }
+
+                if (!confirm(`Are you sure you want to delete '${itemName}'?`)) {
+                    return;
+                }
+
+                const profile = this.profiles[this.currentProfile];
+                
+                profile.assets = profile.assets.filter(item => item.id !== id);
+                profile.incomes = profile.incomes.filter(item => item.id !== id);
+                profile.expenses = profile.expenses.filter(item => item.id !== id);
+
+                this.log('INFO', `Item '${itemName}' deleted`);
+                this.setStatus(`Deleted: ${itemName}`);
+                
+                this.saveData();
+                this.renderAll();
+            },
+
+            // Edit item
+            editItem(id) {
+                if (this.isCombinedMode) {
+                    alert('Cannot edit items in combined mode. Exit combined mode first.');
+                    return;
+                }
+
+                const profile = this.profiles[this.currentProfile];
+                let item = null;
+                let type = null;
+
+                item = profile.assets.find(i => i.id === id);
+                if (item) type = 'asset';
+                
+                if (!item) {
+                    item = profile.incomes.find(i => i.id === id);
+                    if (item) type = 'income';
+                }
+                
+                if (!item) {
+                    item = profile.expenses.find(i => i.id === id);
+                    if (item) type = 'expense';
+                }
+
+                if (!item) return;
+
+                this.editingItemId = id;
+                document.getElementById('addButton').textContent = 'Update Item';
+                document.getElementById('itemType').value = type;
+                this.updateFormFields();
+
+                document.getElementById('itemName').value = item.name;
+
+                if (type === 'asset') {
+                    document.getElementById('assetValue').value = item.value;
+                    document.getElementById('assetType').value = item.assetType;
+                    document.getElementById('isStartingBalance').checked = item.isStartingBalance || false;
+                } else {
+                    document.getElementById('itemAmount').value = item.amount;
+                    document.getElementById('itemFrequency').value = item.frequency;
+                    document.getElementById('itemStartDate').value = item.startDate;
+                    document.getElementById('itemCategory').value = item.category;
+                    
+                    if (item.endDate) {
+                        document.getElementById('hasEndDate').checked = true;
+                        document.getElementById('itemEndDate').disabled = false;
+                        document.getElementById('itemEndDate').value = item.endDate;
+                    }
+                }
+
+                // Scroll to top of form
+                document.querySelector('.panel').scrollTop = 0;
+            },
+
+            // Calculate normalized monthly amount
+            normalizeToMonthly(amount, frequency) {
+                const multipliers = {
+                    'daily': 30.4375,
+                    'weekly': 4.3333,
+                    'biweekly': 2.1666,
+                    'monthly': 1,
+                    'quarterly': 1/3,
+                    'annually': 1/12,
+                    'onetime': 0
+                };
+                return amount * (multipliers[frequency] || 0);
+            },
+
+            // Calculate metrics
+            calculateMetrics() {
+                const data = this.getCurrentData();
+                if (!data) return;
+
+                // Net Worth
+                let totalAssets = 0;
+                data.assets.forEach(asset => {
+                    totalAssets += asset.value || 0;
+                });
+
+                let totalLiabilities = 0;
+
+                const netWorth = totalAssets - totalLiabilities;
+
+                // Monthly metrics
+                let monthlyIncome = 0;
+                data.incomes.forEach(income => {
+                    monthlyIncome += this.normalizeToMonthly(income.amount, income.frequency);
+                });
+
+                let monthlyExpenses = 0;
+                data.expenses.forEach(expense => {
+                    monthlyExpenses += this.normalizeToMonthly(expense.amount, expense.frequency);
+                });
+
+                const monthlyCashFlow = monthlyIncome - monthlyExpenses;
+
+                // Update UI
+                document.getElementById('netWorthValue').textContent = this.formatCurrency(netWorth);
+                document.getElementById('totalAssets').textContent = this.formatCurrency(totalAssets);
+                document.getElementById('totalLiabilities').textContent = this.formatCurrency(totalLiabilities);
+                document.getElementById('monthlyIncome').textContent = this.formatCurrency(monthlyIncome);
+                document.getElementById('monthlyExpenses').textContent = this.formatCurrency(monthlyExpenses);
+                
+                const cashFlowEl = document.getElementById('monthlyCashFlow');
+                cashFlowEl.textContent = this.formatCurrency(monthlyCashFlow);
+                cashFlowEl.className = 'metric-value ' + (monthlyCashFlow >= 0 ? 'text-success' : 'text-danger');
+
+                // Financial health metrics
+                const savingsRate = monthlyIncome > 0 ? (monthlyCashFlow / monthlyIncome) * 100 : 0;
+                document.getElementById('savingsRate').textContent = savingsRate.toFixed(1) + '%';
+
+                let monthlyDebtPayments = 0;
+                data.expenses.forEach(expense => {
+                    if (expense.category === 'debt') {
+                        monthlyDebtPayments += this.normalizeToMonthly(expense.amount, expense.frequency);
+                    }
+                });
+                const dti = monthlyIncome > 0 ? (monthlyDebtPayments / monthlyIncome) * 100 : 0;
+                document.getElementById('debtToIncome').textContent = dti.toFixed(1) + '%';
+            },
+
+            // Format currency
+            formatCurrency(amount) {
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 2
+                }).format(amount);
+            },
+
+            // Generate transactions for date range
+            generateTransactions(startDate, endDate) {
+                const data = this.getCurrentData();
+                if (!data) return [];
+
+                const transactions = [];
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+
+                // Process incomes
+                data.incomes.forEach(income => {
+                    this.generateItemTransactions(income, start, end, transactions, true);
+                });
+
+                // Process expenses
+                data.expenses.forEach(expense => {
+                    this.generateItemTransactions(expense, start, end, transactions, false);
+                });
+
+                // Sort by date
+                transactions.sort((a, b) => a.date - b.date);
+
+                return transactions;
+            },
+
+            // Generate transactions for a single item
+            generateItemTransactions(item, startDate, endDate, transactions, isIncome) {
+                const itemStart = new Date(item.startDate);
+                const itemEnd = item.endDate ? new Date(item.endDate) : endDate;
+
+                let currentDate = new Date(itemStart);
+
+                while (currentDate <= itemEnd && currentDate <= endDate) {
+                    if (currentDate >= startDate) {
+                        transactions.push({
+                            date: new Date(currentDate),
+                            name: item.name,
+                            amount: isIncome ? item.amount : -item.amount,
+                            category: item.category,
+                            id: item.id,
+                            sourceProfile: item.sourceProfile || 'N/A'
+                        });
+                    }
+
+                    // Increment date based on frequency
+                    switch (item.frequency) {
+                        case 'daily':
+                            currentDate.setDate(currentDate.getDate() + 1);
+                            break;
+                        case 'weekly':
+                            currentDate.setDate(currentDate.getDate() + 7);
+                            break;
+                        case 'biweekly':
+                            currentDate.setDate(currentDate.getDate() + 14);
+                            break;
+                        case 'monthly':
+                            currentDate.setMonth(currentDate.getMonth() + 1);
+                            break;
+                        case 'quarterly':
+                            currentDate.setMonth(currentDate.getMonth() + 3);
+                            break;
+                        case 'annually':
+                            currentDate.setFullYear(currentDate.getFullYear() + 1);
+                            break;
+                        case 'onetime':
+                            currentDate = new Date(itemEnd.getTime() + 1); // Exit loop
+                            break;
+                    }
+                }
+            },
+
+            // Calculate running balance
+            calculateRunningBalance(startDate, endDate) {
+                const transactions = this.generateTransactions(startDate, endDate);
+                const ledger = {};
+
+                let runningBalance = this.settings.startingBalance || 0;
+
+                // Get starting balance from assets
+                const data = this.getCurrentData();
+                if (data) {
+                    const startingAsset = data.assets.find(a => a.isStartingBalance);
+                    if (startingAsset) {
+                        runningBalance = startingAsset.value;
+                    }
+                }
+
+                let current = new Date(startDate);
+                const end = new Date(endDate);
+
+                while (current <= end) {
+                    const dateStr = current.toISOString().split('T')[0];
+                    const dayTransactions = transactions.filter(t => 
+                        t.date.toISOString().split('T')[0] === dateStr
+                    );
+
+                    const netChange = dayTransactions.reduce((sum, t) => sum + t.amount, 0);
+                    runningBalance += netChange;
+
+                    ledger[dateStr] = {
+                        date: new Date(current),
+                        transactions: dayTransactions,
+                        netChange,
+                        balance: runningBalance
+                    };
+
+                    current.setDate(current.getDate() + 1);
+                }
+
+                return ledger;
+            },
+
+            // Update calendar
+            updateCalendar() {
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                                  'July', 'August', 'September', 'October', 'November', 'December'];
+                
+                document.getElementById('calendarMonth').textContent = 
+                    `${monthNames[this.currentMonth]} ${this.currentYear}`;
+
+                const firstDay = new Date(this.currentYear, this.currentMonth, 1);
+                const lastDay = new Date(this.currentYear, this.currentMonth + 1, 0);
+                const prevLastDay = new Date(this.currentYear, this.currentMonth, 0);
+
+                const firstDayWeek = firstDay.getDay();
+                const lastDate = lastDay.getDate();
+                const prevLastDate = prevLastDay.getDate();
+
+                // Calculate ledger for the month
+                const startDate = new Date(this.currentYear, this.currentMonth, 1);
+                const endDate = new Date(this.currentYear, this.currentMonth + 1, 0);
+                const ledger = this.calculateRunningBalance(startDate, endDate);
+
+                // Get active filters
+                const activeFilters = Array.from(document.querySelectorAll('.filter-checkbox input:checked'))
+                    .map(cb => cb.dataset.category);
+
+                let html = `
+                    <div class="calendar-header">Sun</div>
+                    <div class="calendar-header">Mon</div>
+                    <div class="calendar-header">Tue</div>
+                    <div class="calendar-header">Wed</div>
+                    <div class="calendar-header">Thu</div>
+                    <div class="calendar-header">Fri</div>
+                    <div class="calendar-header">Sat</div>
+                `;
+
+                // Previous month days
+                for (let i = firstDayWeek - 1; i >= 0; i--) {
+                    const date = prevLastDate - i;
+                    html += `<div class="calendar-day other-month"><div class="day-number">${date}</div></div>`;
+                }
+
+                // Current month days
+                for (let day = 1; day <= lastDate; day++) {
+                    const dateStr = `${this.currentYear}-${String(this.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const dayData = ledger[dateStr] || { transactions: [], netChange: 0, balance: 0 };
+                    
+                    // Filter transactions
+                    const visibleTransactions = dayData.transactions.filter(t => 
+                        activeFilters.includes(t.category)
+                    );
+
+                    const isWarning = dayData.balance < this.settings.safetyBuffer;
+                    const warningClass = isWarning ? 'warning' : '';
+
+                    let transactionsHtml = '';
+                    visibleTransactions.forEach(t => {
+                        const categoryClass = t.amount > 0 ? 'transaction-income' : 
+                                            (t.category === 'rent' ? 'transaction-rent' :
+                                             t.category === 'debt' ? 'transaction-debt' :
+                                             'transaction-expense');
+                        transactionsHtml += `<div class="transaction-item ${categoryClass}">${t.amount > 0 ? '+' : ''}${this.formatCurrency(t.amount)}</div>`;
+                    });
+
+                    html += `
+                        <div class="calendar-day ${warningClass}">
+                            <div class="day-number">${day}</div>
+                            <div class="day-transactions">${transactionsHtml}</div>
+                            <div class="day-summary">
+                                <div>Net: <span class="${dayData.netChange >= 0 ? 'balance-positive' : 'balance-negative'}">${this.formatCurrency(dayData.netChange)}</span></div>
+                                <div>Balance: <span class="${dayData.balance >= 0 ? 'balance-positive' : 'balance-negative'}">${this.formatCurrency(dayData.balance)}</span></div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Next month days
+                const remainingCells = 42 - (firstDayWeek + lastDate);
+                for (let i = 1; i <= remainingCells; i++) {
+                    html += `<div class="calendar-day other-month"><div class="day-number">${i}</div></div>`;
+                }
+
+                document.getElementById('calendarGrid').innerHTML = html;
+            },
+
+            // Calendar navigation
+            previousMonth() {
+                this.currentMonth--;
+                if (this.currentMonth < 0) {
+                    this.currentMonth = 11;
+                    this.currentYear--;
+                }
+                this.updateCalendar();
+            },
+
+            nextMonth() {
+                this.currentMonth++;
+                if (this.currentMonth > 11) {
+                    this.currentMonth = 0;
+                    this.currentYear++;
+                }
+                this.updateCalendar();
+            },
+
+            goToToday() {
+                const today = new Date();
+                this.currentMonth = today.getMonth();
+                this.currentYear = today.getFullYear();
+                this.updateCalendar();
+            },
+
+            // Update forecast chart
+            updateForecastChart() {
+                const horizon = parseInt(document.getElementById('forecastHorizon').value);
+                const startDate = new Date();
+                const endDate = new Date();
+                endDate.setMonth(endDate.getMonth() + horizon);
+
+                const ledger = this.calculateRunningBalance(startDate, endDate);
+                
+                const dates = [];
+                const balances = [];
+                const safetyLine = [];
+
+                Object.keys(ledger).sort().forEach(dateStr => {
+                    const data = ledger[dateStr];
+                    dates.push(new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    balances.push(data.balance);
+                    safetyLine.push(this.settings.safetyBuffer);
+                });
+
+                // Calculate average daily balance for next 30 days
+                const next30Days = Object.keys(ledger).sort().slice(0, 30);
+                const avgBalance = next30Days.reduce((sum, date) => sum + ledger[date].balance, 0) / next30Days.length;
+                document.getElementById('avgDailyBalance').textContent = this.formatCurrency(avgBalance);
+
+                const ctx = document.getElementById('forecastChart').getContext('2d');
+
+                if (this.forecastChart) {
+                    this.forecastChart.destroy();
+                }
+
+                this.forecastChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [{
+                            label: 'Cash Balance',
+                            data: balances,
+                            borderColor: 'rgb(37, 99, 235)',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            tension: 0.1,
+                            fill: true
+                        }, {
+                            label: 'Safety Buffer',
+                            data: safetyLine,
+                            borderColor: 'rgb(239, 68, 68)',
+                            borderDash: [5, 5],
+                            tension: 0,
+                            fill: false,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += new Intl.NumberFormat('en-US', {
+                                            style: 'currency',
+                                            currency: 'USD'
+                                        }).format(context.parsed.y);
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            },
+
+            // Profile management
+            switchProfile() {
+                const newProfile = document.getElementById('profileSelector').value;
+                if (newProfile && newProfile !== this.currentProfile) {
+                    this.currentProfile = newProfile;
+                    this.settings.lastUsedProfile = newProfile;
+                    this.saveData();
+                    this.log('INFO', `Switched to profile '${newProfile}'`);
+                    this.renderAll();
+                }
+            },
+
+            showProfileManager() {
+                // Populate selects
+                const profiles = Object.keys(this.profiles);
+                
+                let optionsHtml = profiles.map(p => `<option value="${p}">${p}</option>`).join('');
+                document.getElementById('duplicateSource').innerHTML = optionsHtml;
+                document.getElementById('deleteProfileSelect').innerHTML = optionsHtml;
+                
+                document.getElementById('profileManagerModal').classList.add('active');
+            },
+
+            createNewProfile() {
+                const name = document.getElementById('newProfileName').value.trim();
+                if (!name) {
+                    alert('Please enter a profile name');
+                    return;
+                }
+
+                if (this.profiles[name]) {
+                    alert('A profile with this name already exists');
+                    return;
+                }
+
+                this.profiles[name] = {
+                    name: name,
+                    assets: [],
+                    incomes: [],
+                    expenses: []
+                };
+
+                this.saveData();
+                this.log('INFO', `New profile '${name}' created`);
+                this.renderProfileSelector();
+                document.getElementById('newProfileName').value = '';
+                this.setStatus(`Created profile: ${name}`);
+            },
+
+            duplicateProfile() {
+                const source = document.getElementById('duplicateSource').value;
+                const newName = document.getElementById('duplicateName').value.trim();
+
+                if (!newName) {
+                    alert('Please enter a name for the new profile');
+                    return;
+                }
+
+                if (this.profiles[newName]) {
+                    alert('A profile with this name already exists');
+                    return;
+                }
+
+                // Deep copy the source profile
+                this.profiles[newName] = JSON.parse(JSON.stringify(this.profiles[source]));
+                this.profiles[newName].name = newName;
+
+                this.saveData();
+                this.log('INFO', `Profile '${source}' duplicated as '${newName}'`);
+                this.renderProfileSelector();
+                document.getElementById('duplicateName').value = '';
+                this.setStatus(`Duplicated profile: ${newName}`);
+            },
+
+            deleteProfile() {
+                const profileName = document.getElementById('deleteProfileSelect').value;
+                
+                if (Object.keys(this.profiles).length === 1) {
+                    alert('Cannot delete the last profile');
+                    return;
+                }
+
+                if (!confirm(`Are you sure you want to delete profile '${profileName}'?`)) {
+                    return;
+                }
+
+                delete this.profiles[profileName];
+
+                if (this.currentProfile === profileName) {
+                    this.currentProfile = Object.keys(this.profiles)[0];
+                    this.settings.lastUsedProfile = this.currentProfile;
+                }
+
+                this.saveData();
+                this.log('INFO', `Profile '${profileName}' deleted`);
+                this.renderAll();
+                this.closeModal('profileManagerModal');
+                this.setStatus(`Deleted profile: ${profileName}`);
+            },
+
+            // Settings
+            showSettings() {
+                document.getElementById('safetyBuffer').value = this.settings.safetyBuffer;
+                document.getElementById('startingBalance').value = this.settings.startingBalance;
+                document.getElementById('settingsModal').classList.add('active');
+            },
+
+            saveSettings() {
+                this.settings.safetyBuffer = parseFloat(document.getElementById('safetyBuffer').value) || 500;
+                this.settings.startingBalance = parseFloat(document.getElementById('startingBalance').value) || 0;
+                
+                this.saveData();
+                this.log('INFO', 'Settings updated');
+                this.closeModal('settingsModal');
+                this.setStatus('Settings saved');
+                this.renderAll();
+            },
+
+            // Audit log
+            showAuditLog() {
+                const logHtml = this.auditLog
+                    .slice()
+                    .reverse()
+                    .map(entry => `[${entry.timestamp}] ${entry.level}: ${entry.message}`)
+                    .join('\n');
+                
+                document.getElementById('auditLogContent').textContent = logHtml || 'No log entries yet.';
+                document.getElementById('auditLogModal').classList.add('active');
+            },
+
+            // Modal management
+            closeModal(modalId) {
+                document.getElementById(modalId).classList.remove('active');
+            },
+
+            // Render data tree
+            renderDataTree() {
+                const data = this.getCurrentData();
+                if (!data) return;
+
+                let html = '';
+
+                // Income Streams
+                html += '<li class="tree-category">';
+                html += '<div class="tree-category-header">Income Streams (' + data.incomes.length + ')</div>';
+                data.incomes.forEach(income => {
+                    const sourceInfo = income.sourceProfile ? `<span class="text-muted" style="font-size: 0.7rem;">[${income.sourceProfile}]</span>` : '';
+                    html += `
+                        <div class="tree-item" onclick="app.editItem('${income.id}')" oncontextmenu="app.showContextMenu(event, '${income.id}', '${income.name}')">
+                            <div class="tree-item-name">${income.name} ${sourceInfo}</div>
+                            <div class="tree-item-details">
+                                ${this.formatCurrency(income.amount)} • ${income.frequency} • 
+                                ${income.startDate} ${income.endDate ? '→ ' + income.endDate : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</li>';
+
+                // Expenses
+                html += '<li class="tree-category">';
+                html += '<div class="tree-category-header">Expenses & Liabilities (' + data.expenses.length + ')</div>';
+                data.expenses.forEach(expense => {
+                    const sourceInfo = expense.sourceProfile ? `<span class="text-muted" style="font-size: 0.7rem;">[${expense.sourceProfile}]</span>` : '';
+                    html += `
+                        <div class="tree-item" onclick="app.editItem('${expense.id}')" oncontextmenu="app.showContextMenu(event, '${expense.id}', '${expense.name}')">
+                            <div class="tree-item-name">${expense.name} ${sourceInfo}</div>
+                            <div class="tree-item-details">
+                                ${this.formatCurrency(expense.amount)} • ${expense.frequency} • 
+                                ${expense.startDate} ${expense.endDate ? '→ ' + expense.endDate : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</li>';
+
+                // Assets
+                html += '<li class="tree-category">';
+                html += '<div class="tree-category-header">Assets (' + data.assets.length + ')</div>';
+                data.assets.forEach(asset => {
+                    const sourceInfo = asset.sourceProfile ? `<span class="text-muted" style="font-size: 0.7rem;">[${asset.sourceProfile}]</span>` : '';
+                    html += `
+                        <div class="tree-item" onclick="app.editItem('${asset.id}')" oncontextmenu="app.showContextMenu(event, '${asset.id}', '${asset.name}')">
+                            <div class="tree-item-name">${asset.name} ${sourceInfo}</div>
+                            <div class="tree-item-details">
+                                ${this.formatCurrency(asset.value)} • ${asset.assetType}
+                                ${asset.isStartingBalance ? ' • Starting Balance' : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</li>';
+
+                document.getElementById('dataTree').innerHTML = html;
+            },
+
+            // Context menu
+            showContextMenu(event, id, name) {
+                if (this.isCombinedMode) {
+                    event.preventDefault();
+                    return false;
+                }
+
+                event.preventDefault();
+                
+                const existingMenu = document.querySelector('.context-menu');
+                if (existingMenu) {
+                    existingMenu.remove();
+                }
+
+                const menu = document.createElement('div');
+                menu.className = 'context-menu active';
+                menu.style.left = event.pageX + 'px';
+                menu.style.top = event.pageY + 'px';
+                
+                menu.innerHTML = `
+                    <div class="context-menu-item" onclick="app.editItem('${id}'); this.parentElement.remove();">Edit</div>
+                    <div class="context-menu-item" onclick="app.deleteItem('${id}', '${name}'); this.parentElement.remove();">Delete</div>
+                `;
+                
+                document.body.appendChild(menu);
+
+                // Close on click outside
+                setTimeout(() => {
+                    document.addEventListener('click', function closeMenu() {
+                        menu.remove();
+                        document.removeEventListener('click', closeMenu);
+                    });
+                }, 0);
+
+                return false;
+            },
+
+            // Render profile selector
+            renderProfileSelector() {
+                if (this.isCombinedMode) return;
+
+                const profiles = Object.keys(this.profiles);
+                const html = profiles.map(p => 
+                    `<option value="${p}" ${p === this.currentProfile ? 'selected' : ''}>${p}</option>`
+                ).join('');
+                
+                document.getElementById('profileSelector').innerHTML = html;
+                document.getElementById('profileSubtitle').textContent = `Current Profile: ${this.currentProfile}`;
+            },
+
+            // Render all views
+            renderAll() {
+                if (!this.isCombinedMode) {
+                    this.renderProfileSelector();
+                }
+                this.renderDataTree();
+                this.calculateMetrics();
+                this.updateCalendar();
+            }
+        };
+
+        // Initialize app when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+    </script>
+</body>
+</html>

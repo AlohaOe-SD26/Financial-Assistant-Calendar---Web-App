@@ -1,0 +1,2006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Financial Calendar - Complete Edition</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --background: #f9fafb;
+            --surface: #ffffff;
+            --border: #e5e7eb;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .app-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: var(--surface);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .app-header {
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+            padding: 1rem 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .app-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .combined-mode-badge {
+            display: inline-block;
+            background: var(--warning-color);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        /* Alert Badge */
+        .alert-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--danger-color);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 50px;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+            cursor: pointer;
+            z-index: 999;
+            display: none;
+            animation: pulse 2s infinite;
+        }
+
+        .alert-badge.active {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Menu Bar */
+        .menu-bar {
+            background: #1f2937;
+            color: white;
+            padding: 0.5rem 1rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .menu-item {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .menu-item:hover {
+            background: #374151;
+        }
+
+        /* 7-DAY FORECAST BAR - HORIZONTAL CAROUSEL */
+        .forecast-bar {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: white;
+            padding: 1rem 0;
+            border-bottom: 2px solid var(--primary-color);
+            position: relative;
+        }
+
+        .forecast-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            position: relative;
+        }
+
+        .forecast-scroll-wrapper {
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.3) transparent;
+        }
+
+        .forecast-scroll-wrapper::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .forecast-scroll-wrapper::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+        }
+
+        .forecast-scroll-wrapper::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+        }
+
+        .forecast-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.5);
+        }
+
+        .forecast-days {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: minmax(350px, 1fr);
+            gap: 1rem;
+            padding: 0.5rem 0;
+        }
+
+        .forecast-day {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            min-width: 350px;
+        }
+
+        .forecast-day:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+            transform: translateY(-2px);
+        }
+
+        .forecast-day.today {
+            background: rgba(16, 185, 129, 0.3);
+            border-color: var(--success-color);
+        }
+
+        .forecast-day-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .forecast-day-name {
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+
+        .forecast-transactions {
+            font-size: 0.75rem;
+            margin: 0.5rem 0;
+            opacity: 0.9;
+        }
+
+        .forecast-balance {
+            font-weight: 700;
+            font-size: 1.125rem;
+            border-top: 1px solid rgba(255,255,255,0.3);
+            padding-top: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .forecast-balance.warning {
+            color: #fca5a5;
+        }
+
+        /* Tab Navigation */
+        .tab-navigation {
+            display: flex;
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab-button:hover {
+            background: var(--background);
+        }
+
+        .tab-button.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: var(--border); color: var(--text-primary); }
+        .btn-success { background: var(--success-color); color: white; }
+        .btn-danger { background: var(--danger-color); color: white; }
+        .btn-warning { background: var(--warning-color); color: white; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.625rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 8px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-content.large { max-width: 1200px; }
+        .modal-content.xlarge { max-width: 1400px; }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        /* Day Detail Modal Components */
+        .day-detail-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .transaction-detail {
+            background: var(--background);
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary-color);
+            margin-bottom: 0.75rem;
+        }
+
+        .transaction-detail.income { border-left-color: var(--success-color); }
+        .transaction-detail.expense { border-left-color: var(--danger-color); }
+
+        .payment-status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .payment-status.paid {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success-color);
+        }
+
+        .payment-status.unpaid {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger-color);
+        }
+
+        .payment-status.adjusted {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning-color);
+        }
+
+        /* Savings Plans */
+        .savings-plan-card {
+            background: var(--background);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 2px solid var(--border);
+        }
+
+        .savings-progress-bar {
+            width: 100%;
+            height: 24px;
+            background: #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .savings-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success-color), #34d399);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* Profile Cards */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .profile-card {
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .profile-card:hover {
+            border-color: var(--primary-color);
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .profile-card.selected {
+            border-color: var(--primary-color);
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        /* Data Management Layout */
+        .data-management-layout {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr 1fr;
+            gap: 1.5rem;
+            height: calc(100vh - 450px);
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .panel-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+        }
+
+        /* Data Tree */
+        .data-tree {
+            list-style: none;
+        }
+
+        .tree-category {
+            margin-bottom: 1rem;
+        }
+
+        .tree-category-header {
+            font-weight: 600;
+            padding: 0.75rem;
+            background: var(--background);
+            border-radius: 4px;
+        }
+
+        .tree-item {
+            padding: 0.75rem;
+            margin: 0.25rem 0 0.25rem 1.5rem;
+            border-left: 2px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s;
+            border-radius: 4px;
+        }
+
+        .tree-item:hover {
+            background: var(--background);
+        }
+
+        /* Calendar */
+        .calendar-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .calendar-header {
+            background: #1f2937;
+            color: white;
+            padding: 0.75rem 0.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .calendar-day {
+            background: var(--surface);
+            min-height: 120px;
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .calendar-day:hover {
+            background: var(--background);
+            box-shadow: 0 0 0 2px var(--primary-color) inset;
+        }
+
+        .calendar-day.warning {
+            background: #fef2f2;
+        }
+
+        .day-number {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        /* Net Worth */
+        .net-worth-display {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--primary-color), #1d4ed8);
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .net-worth-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: #1f2937;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+        }
+
+        /* Utilities */
+        .text-success { color: var(--success-color); }
+        .text-danger { color: var(--danger-color); }
+        .text-muted { color: var(--text-secondary); }
+        .checkbox-group { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+        #fileInput { display: none; }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+            .data-management-layout { 
+                grid-template-columns: 1fr; 
+                height: auto; 
+            }
+            
+            .day-detail-grid { 
+                grid-template-columns: 1fr; 
+            }
+            
+            .forecast-days {
+                grid-auto-columns: minmax(280px, 1fr);
+            }
+            
+            .forecast-day {
+                min-width: 280px;
+            }
+
+            .calendar-grid {
+                gap: 0;
+                font-size: 0.75rem;
+            }
+
+            .calendar-header {
+                padding: 0.5rem 0.25rem;
+                font-size: 0.7rem;
+            }
+
+            .calendar-day {
+                min-height: 80px;
+                padding: 0.25rem;
+            }
+
+            .day-number {
+                font-size: 0.75rem;
+                margin-bottom: 0.25rem;
+            }
+
+            .calendar-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .calendar-controls > div:first-child {
+                display: flex;
+                gap: 0.5rem;
+                justify-content: space-between;
+            }
+
+            .tab-content {
+                padding: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="app-title">
+                Personal Financial Calendar
+                <span class="combined-mode-badge" id="combinedBadge" style="display: none;">COMBINED</span>
+            </div>
+            <div style="font-size: 0.875rem; color: var(--text-secondary);" id="profileSubtitle">Loading...</div>
+        </header>
+
+        <!-- Alert Badge -->
+        <div class="alert-badge" id="alertBadge" onclick="app.showAlerts()">
+            <span>⚠️</span>
+            <span style="background: white; color: var(--danger-color); padding: 0.25rem 0.5rem; border-radius: 20px; font-weight: 700;" id="alertCount">0</span>
+        </div>
+
+        <!-- Menu -->
+        <nav class="menu-bar">
+            <div class="menu-item" onclick="app.showProfileManager()">Profiles</div>
+            <div class="menu-item" onclick="app.exportCurrentProfile()">Export</div>
+            <div class="menu-item" onclick="app.showImportProfile()">Import</div>
+            <div class="menu-item" onclick="app.showCombinedMode()">Combined Finances</div>
+            <div class="menu-item" onclick="app.saveCurrentProfile()">Save</div>
+            <div class="menu-item" onclick="app.showSettings()">Settings</div>
+            <div class="menu-item" onclick="app.exitCombinedMode()" id="exitCombinedBtn" style="display: none;">Exit Combined</div>
+        </nav>
+
+        <!-- 7-DAY FORECAST - HORIZONTAL CAROUSEL -->
+        <div class="forecast-bar">
+            <div class="forecast-container">
+                <div class="forecast-scroll-wrapper">
+                    <div class="forecast-days" id="forecastDays"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <nav class="tab-navigation">
+            <button class="tab-button active" data-tab="data">Data</button>
+            <button class="tab-button" data-tab="calendar">Calendar</button>
+            <button class="tab-button" data-tab="savings">Savings</button>
+            <button class="tab-button" data-tab="reports">Reports</button>
+        </nav>
+
+        <!-- Tab: Data Management -->
+        <div id="tab-data" class="tab-content active">
+            <div style="margin-bottom: 1rem;">
+                <button class="btn btn-primary" onclick="app.showAddItemModal()" style="font-size: 1rem; padding: 0.75rem 1.5rem;">
+                    ➕ Add New Item
+                </button>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.5rem; height: calc(100vh - 450px);">
+                <div class="panel">
+                    <h2 class="panel-title">Overview</h2>
+                    <ul class="data-tree" id="dataTree"></ul>
+                </div>
+
+                <div class="panel">
+                    <h2 class="panel-title">Profile</h2>
+                    
+                    <div class="form-group">
+                        <select id="profileSelector" class="form-control" onchange="app.switchProfile()"></select>
+                    </div>
+
+                    <div class="net-worth-display">
+                        <div style="font-size: 0.875rem; opacity: 0.9;">Net Worth</div>
+                        <div class="net-worth-value" id="netWorthValue">$0</div>
+                    </div>
+
+                    <div style="display: grid; gap: 1rem;">
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Monthly Income</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;" class="text-success" id="monthlyIncome">$0</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Monthly Expenses</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;" class="text-danger" id="monthlyExpenses">$0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Calendar -->
+        <div id="tab-calendar" class="tab-content">
+            <div class="calendar-controls">
+                <div style="display: flex; gap: 1rem; align-items: center; flex: 1;">
+                    <button class="btn btn-secondary" onclick="app.previousMonth()">◀</button>
+                    <div style="font-size: 1.25rem; font-weight: 600; flex: 1; text-align: center;" id="calendarMonth"></div>
+                    <button class="btn btn-secondary" onclick="app.nextMonth()">▶</button>
+                </div>
+                <button class="btn btn-primary" onclick="app.goToToday()">Today</button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+
+        <!-- Tab: Savings Plans -->
+        <div id="tab-savings" class="tab-content">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem;">
+                <h2 class="panel-title">Savings Plans</h2>
+                <button class="btn btn-primary" onclick="app.showCreateSavingsPlan()">+ New Plan</button>
+            </div>
+            <div id="savingsPlansContainer"></div>
+        </div>
+
+        <!-- Tab: Reports -->
+        <div id="tab-reports" class="tab-content">
+            <h2 class="panel-title">Forecast</h2>
+            <div style="height: 400px; margin-bottom: 2rem;">
+                <canvas id="forecastChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span id="statusMessage">Ready</span>
+            <span id="lastSaved">Never</span>
+        </div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="fileInput" accept=".json" multiple>
+
+    <!-- Day Detail Modal -->
+    <div id="dayDetailModal" class="modal">
+        <div class="modal-content xlarge">
+            <div class="modal-header">
+                <h2 class="modal-title" id="dayDetailTitle">Day Details</h2>
+                <button class="modal-close" onclick="app.closeModal('dayDetailModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="day-detail-grid">
+                    <div>
+                        <h3 style="margin-bottom: 1rem;">Transactions</h3>
+                        <div id="dayTransactionList"></div>
+                    </div>
+                    <div>
+                        <h3 style="margin-bottom: 1rem;">Next Day</h3>
+                        <div id="nextDayPreview"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Instance Modal -->
+    <div id="transactionInstanceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Adjust Transaction</h2>
+                <button class="modal-close" onclick="app.closeModal('transactionInstanceModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select id="instanceStatus" class="form-control">
+                        <option value="paid">Paid</option>
+                        <option value="unpaid">Unpaid/Missed</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Adjusted Amount ($)</label>
+                    <input type="number" id="instanceAmount" class="form-control" step="0.01" placeholder="Leave blank for original">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Actual Date</label>
+                    <input type="date" id="instanceActualDate" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea id="instanceNotes" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="app.saveTransactionInstance()">Save</button>
+                <button class="btn btn-secondary" onclick="app.closeModal('transactionInstanceModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historical Edit Modal -->
+    <div id="historicalEditModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Apply Changes</h2>
+                <button class="modal-close" onclick="app.closeModal('historicalEditModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem;">How would you like to apply this change?</p>
+                
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; padding: 1rem; background: var(--background); border-radius: 6px; cursor: pointer;">
+                        <input type="radio" name="editMode" value="all" checked>
+                        <div>
+                            <div style="font-weight: 600;">From Beginning</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">All past and future</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; padding: 1rem; background: var(--background); border-radius: 6px; cursor: pointer;">
+                        <input type="radio" name="editMode" value="future">
+                        <div>
+                            <div style="font-weight: 600;">From Specific Date</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Future only</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="form-group" id="futureStartGroup" style="display: none;">
+                    <label class="form-label">Effective Date</label>
+                    <input type="date" id="futureStartDate" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea id="editNotes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="app.applyHistoricalEdit()">Apply</button>
+                <button class="btn btn-secondary" onclick="app.closeModal('historicalEditModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Item Modal -->
+    <div id="addItemModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="addItemModalTitle">Add New Item</h2>
+                <button class="modal-close" onclick="app.closeModal('addItemModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <select id="itemType" class="form-control" onchange="app.updateFormFields()">
+                        <option value="income">Income</option>
+                        <option value="expense">Expense</option>
+                        <option value="asset">Asset</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" id="itemName" class="form-control">
+                </div>
+
+                <div id="financialFields">
+                    <div class="form-group">
+                        <label class="form-label">Amount ($)</label>
+                        <input type="number" id="itemAmount" class="form-control" step="0.01">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Frequency</label>
+                        <select id="itemFrequency" class="form-control">
+                            <option value="monthly" selected>Monthly</option>
+                            <option value="biweekly">Bi-Weekly</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="daily">Daily</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" id="itemStartDate" class="form-control">
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="hasEndDate" onchange="app.toggleEndDate()">
+                        <label>End Date</label>
+                    </div>
+
+                    <div class="form-group">
+                        <input type="date" id="itemEndDate" class="form-control" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select id="itemCategory" class="form-control">
+                            <option value="core-income">Core Income</option>
+                            <option value="rent">Rent/Mortgage</option>
+                            <option value="debt">Debt</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="assetFields" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Value ($)</label>
+                        <input type="number" id="assetValue" class="form-control" step="0.01">
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="isStartingBalance">
+                        <label>Starting Balance</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="app.saveItemFromModal()" id="saveItemButton">Add Item</button>
+                <button class="btn btn-secondary" onclick="app.closeModal('addItemModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Savings Plan Modal -->
+    <div id="createSavingsPlanModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Create Savings Plan</h2>
+                <button class="modal-close" onclick="app.closeModal('createSavingsPlanModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Plan Name</label>
+                    <input type="text" id="savingsPlanName" class="form-control" placeholder="Emergency Fund">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Goal Amount ($)</label>
+                    <input type="number" id="savingsPlanGoal" class="form-control" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Regular Contribution ($)</label>
+                    <input type="number" id="savingsPlanAmount" class="form-control" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Frequency</label>
+                    <select id="savingsPlanFrequency" class="form-control">
+                        <option value="monthly" selected>Monthly</option>
+                        <option value="biweekly">Bi-Weekly</option>
+                        <option value="weekly">Weekly</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Current Saved ($)</label>
+                    <input type="number" id="savingsPlanCurrent" class="form-control" step="0.01" value="0">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="app.createSavingsPlan()">Create</button>
+                <button class="btn btn-secondary" onclick="app.closeModal('createSavingsPlanModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts Modal -->
+    <div id="alertsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Alerts</h2>
+                <button class="modal-close" onclick="app.closeModal('alertsModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="alertsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Combined Mode Modal (Simplified) -->
+    <div id="combinedModeModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 class="modal-title">Combined Finances</h2>
+                <button class="modal-close" onclick="app.closeModal('combinedModeModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    Combined finances mode: Use Export/Import to merge profiles manually for now.
+                    <br><br>
+                    Full implementation available in previous versions.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Manager Modal -->
+    <div id="profileManagerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Manage Profiles</h2>
+                <button class="modal-close" onclick="app.closeModal('profileManagerModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Create New Profile</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="newProfileName" class="form-control" placeholder="Profile name">
+                        <button class="btn btn-primary" onclick="app.createNewProfile()">Create</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Delete Profile</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select id="deleteProfileSelect" class="form-control"></select>
+                        <button class="btn btn-danger" onclick="app.deleteProfile()">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Settings</h2>
+                <button class="modal-close" onclick="app.closeModal('settingsModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Safety Buffer ($)</label>
+                    <input type="number" id="safetyBuffer" class="form-control" step="0.01" value="500">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="app.saveSettings()">Save</button>
+                <button class="btn btn-secondary" onclick="app.closeModal('settingsModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            currentProfile: null,
+            profiles: {},
+            combinedProfiles: {},
+            savingsPlans: {},
+            paymentInstances: {},
+            settings: { safetyBuffer: 500, lastUsedProfile: null },
+            auditLog: [],
+            editingItemId: null,
+            editingItemData: null,
+            currentMonth: new Date().getMonth(),
+            currentYear: new Date().getFullYear(),
+            forecastChart: null,
+            isCombinedMode: false,
+            currentTransactionInstance: null,
+            currentAlerts: [],
+
+            init() {
+                const hasProfiles = localStorage.getItem('fc_profiles');
+                if (!hasProfiles) {
+                    this.profiles['My Budget'] = { name: 'My Budget', assets: [], incomes: [], expenses: [] };
+                    this.currentProfile = 'My Budget';
+                    this.settings.lastUsedProfile = 'My Budget';
+                    this.saveData();
+                } else {
+                    this.loadData();
+                }
+
+                this.setupEventListeners();
+                this.renderAll();
+                this.update7DayForecast();
+                this.updateAlerts();
+
+                document.getElementById('itemStartDate').valueAsDate = new Date();
+                document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileImport(e.target.files));
+                
+                document.querySelectorAll('input[name="editMode"]').forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        document.getElementById('futureStartGroup').style.display = e.target.value === 'future' ? 'block' : 'none';
+                    });
+                });
+            },
+
+            setupEventListeners() {
+                document.querySelectorAll('.tab-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                        e.target.classList.add('active');
+                        const tabId = e.target.dataset.tab;
+                        document.getElementById(`tab-${tabId}`).classList.add('active');
+                        if (tabId === 'calendar') this.updateCalendar();
+                        else if (tabId === 'savings') this.renderSavingsPlans();
+                    });
+                });
+
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey && e.key === 's') {
+                        e.preventDefault();
+                        this.saveCurrentProfile();
+                    }
+                });
+            },
+
+            loadData() {
+                try {
+                    const profilesData = localStorage.getItem('fc_profiles');
+                    if (profilesData) this.profiles = JSON.parse(profilesData);
+
+                    const savingsData = localStorage.getItem('fc_savings_plans');
+                    if (savingsData) this.savingsPlans = JSON.parse(savingsData);
+
+                    const instancesData = localStorage.getItem('fc_payment_instances');
+                    if (instancesData) this.paymentInstances = JSON.parse(instancesData);
+
+                    const settingsData = localStorage.getItem('fc_settings');
+                    if (settingsData) this.settings = { ...this.settings, ...JSON.parse(settingsData) };
+
+                    this.currentProfile = this.settings.lastUsedProfile || Object.keys(this.profiles)[0];
+                } catch (error) {
+                    console.error('Load error:', error);
+                }
+            },
+
+            saveData() {
+                try {
+                    localStorage.setItem('fc_profiles', JSON.stringify(this.profiles));
+                    localStorage.setItem('fc_savings_plans', JSON.stringify(this.savingsPlans));
+                    localStorage.setItem('fc_payment_instances', JSON.stringify(this.paymentInstances));
+                    localStorage.setItem('fc_settings', JSON.stringify(this.settings));
+                    document.getElementById('lastSaved').textContent = new Date().toLocaleTimeString();
+                } catch (error) {
+                    console.error('Save error:', error);
+                }
+            },
+
+            saveCurrentProfile() {
+                if (this.currentProfile && !this.isCombinedMode) {
+                    this.saveData();
+                }
+            },
+
+            exportCurrentProfile() {
+                if (!this.currentProfile) return;
+                const profile = this.profiles[this.currentProfile];
+                const blob = new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${this.currentProfile.replace(/[^a-z0-9]/gi, '_')}.json`;
+                link.click();
+            },
+
+            showImportProfile() {
+                document.getElementById('fileInput').click();
+            },
+
+            handleFileImport(files) {
+                Array.from(files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const profile = JSON.parse(e.target.result);
+                            let name = profile.name || file.name.replace('.json', '');
+                            if (this.profiles[name]) name += ` (${Date.now()})`;
+                            profile.name = name;
+                            this.profiles[name] = profile;
+                            this.saveData();
+                            this.renderProfileSelector();
+                            alert(`Imported: ${name}`);
+                        } catch (error) {
+                            alert(`Error: ${error.message}`);
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+                document.getElementById('fileInput').value = '';
+            },
+
+            getCurrentData() {
+                return this.isCombinedMode ? this.virtualCombinedData : this.profiles[this.currentProfile];
+            },
+
+            // 7-DAY FORECAST
+            update7DayForecast() {
+                const today = new Date();
+                const days = [];
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(today);
+                    date.setDate(today.getDate() + i);
+                    days.push(date);
+                }
+
+                const ledger = this.calculateRunningBalance(days[0], days[6]);
+
+                let html = '';
+                days.forEach((date, i) => {
+                    const dateStr = date.toISOString().split('T')[0];
+                    const data = ledger[dateStr] || { transactions: [], balance: 0 };
+                    const dayName = i === 0 ? 'TODAY' : date.toLocaleDateString('en-US', { weekday: 'short' });
+                    const isWarning = data.balance < this.settings.safetyBuffer;
+
+                    html += `
+                        <div class="forecast-day ${i === 0 ? 'today' : ''}" onclick="app.showDayDetail('${dateStr}')">
+                            <div class="forecast-day-header">
+                                <div class="forecast-day-name">${dayName}</div>
+                                <div style="font-size: 0.75rem; opacity: 0.9;">${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                            </div>
+                            <div class="forecast-transactions">
+                                ${data.transactions.length} item${data.transactions.length !== 1 ? 's' : ''}
+                            </div>
+                            <div class="forecast-balance ${isWarning ? 'warning' : ''}">
+                                ${this.formatCurrency(data.balance)}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                document.getElementById('forecastDays').innerHTML = html;
+            },
+
+            // DAY DETAIL MODAL
+            showDayDetail(dateStr) {
+                const date = new Date(dateStr + 'T00:00:00');
+                const nextDate = new Date(date);
+                nextDate.setDate(date.getDate() + 1);
+
+                const prevDate = new Date(date);
+                prevDate.setDate(date.getDate() - 1);
+
+                const ledger = this.calculateRunningBalance(prevDate, nextDate);
+                const dayData = ledger[dateStr] || { transactions: [], balance: 0 };
+                const nextDateStr = nextDate.toISOString().split('T')[0];
+                const nextDayData = ledger[nextDateStr] || { transactions: [], balance: 0 };
+
+                document.getElementById('dayDetailTitle').textContent = 
+                    date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+                let html = '';
+                if (dayData.transactions.length === 0) {
+                    html = '<div style="text-align: center; color: var(--text-secondary); padding: 2rem;">No transactions</div>';
+                } else {
+                    dayData.transactions.forEach(t => {
+                        const instanceKey = `${t.id}_${dateStr}`;
+                        const instance = this.paymentInstances[instanceKey] || {};
+                        const status = instance.status || 'paid';
+                        const actualAmount = instance.amount !== undefined ? instance.amount : t.amount;
+                        const isAdjusted = instance.amount !== undefined || instance.actualDate || instance.notes;
+
+                        html += `
+                            <div class="transaction-detail ${t.amount > 0 ? 'income' : 'expense'}">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 1rem;">${t.name}</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                            ${t.category}${instance.actualDate ? ` • Paid: ${instance.actualDate}` : ''}
+                                        </div>
+                                        ${instance.notes ? `<div style="font-size: 0.75rem; margin-top: 0.25rem;">📝 ${instance.notes}</div>` : ''}
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-weight: 700; font-size: 1.125rem;" class="${actualAmount > 0 ? 'text-success' : 'text-danger'}">
+                                            ${actualAmount > 0 ? '+' : ''}${this.formatCurrency(actualAmount)}
+                                        </div>
+                                        <span class="payment-status ${status}${isAdjusted ? ' adjusted' : ''}">
+                                            ${status === 'unpaid' ? '⚠️ Unpaid' : isAdjusted ? '✏️ Adjusted' : '✓ Paid'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-secondary" onclick="app.editTransactionInstance('${t.id}', '${dateStr}')">
+                                    Adjust
+                                </button>
+                            </div>
+                        `;
+                    });
+                }
+                document.getElementById('dayTransactionList').innerHTML = html;
+
+                let preview = `
+                    <div style="background: var(--background); padding: 1rem; border-radius: 6px;">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem;">
+                            ${nextDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                        </div>
+                        <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                            ${nextDayData.transactions.length} transaction${nextDayData.transactions.length !== 1 ? 's' : ''}
+                        </div>
+                        <div style="font-weight: 700; font-size: 1.25rem;" class="${nextDayData.balance >= this.settings.safetyBuffer ? 'text-success' : 'text-danger'}">
+                            ${this.formatCurrency(nextDayData.balance)}
+                        </div>
+                    </div>
+                `;
+                document.getElementById('nextDayPreview').innerHTML = preview;
+
+                document.getElementById('dayDetailModal').classList.add('active');
+            },
+
+            editTransactionInstance(transactionId, dateStr) {
+                const instanceKey = `${transactionId}_${dateStr}`;
+                const instance = this.paymentInstances[instanceKey] || {};
+                
+                this.currentTransactionInstance = { transactionId, dateStr, instanceKey };
+
+                document.getElementById('instanceStatus').value = instance.status || 'paid';
+                document.getElementById('instanceAmount').value = instance.amount !== undefined ? instance.amount : '';
+                document.getElementById('instanceActualDate').value = instance.actualDate || dateStr;
+                document.getElementById('instanceNotes').value = instance.notes || '';
+
+                document.getElementById('transactionInstanceModal').classList.add('active');
+            },
+
+            saveTransactionInstance() {
+                if (!this.currentTransactionInstance) return;
+
+                const { transactionId, dateStr, instanceKey } = this.currentTransactionInstance;
+                
+                const status = document.getElementById('instanceStatus').value;
+                const amountStr = document.getElementById('instanceAmount').value;
+                const actualDate = document.getElementById('instanceActualDate').value;
+                const notes = document.getElementById('instanceNotes').value;
+
+                this.paymentInstances[instanceKey] = {
+                    transactionId,
+                    date: dateStr,
+                    status,
+                    amount: amountStr ? parseFloat(amountStr) : undefined,
+                    actualDate: actualDate !== dateStr ? actualDate : undefined,
+                    notes: notes || undefined,
+                    modified: new Date().toISOString()
+                };
+
+                this.saveData();
+                this.closeModal('transactionInstanceModal');
+                this.showDayDetail(dateStr);
+                this.update7DayForecast();
+                this.updateAlerts();
+            },
+
+            // CALENDAR
+            updateCalendar() {
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                                  'July', 'August', 'September', 'October', 'November', 'December'];
+                
+                document.getElementById('calendarMonth').textContent = 
+                    `${monthNames[this.currentMonth]} ${this.currentYear}`;
+
+                const firstDay = new Date(this.currentYear, this.currentMonth, 1);
+                const lastDay = new Date(this.currentYear, this.currentMonth + 1, 0);
+                const startDate = new Date(this.currentYear, this.currentMonth, 1);
+                const endDate = new Date(this.currentYear, this.currentMonth + 1, 0);
+                const ledger = this.calculateRunningBalance(startDate, endDate);
+
+                let html = `
+                    <div class="calendar-header">Sun</div>
+                    <div class="calendar-header">Mon</div>
+                    <div class="calendar-header">Tue</div>
+                    <div class="calendar-header">Wed</div>
+                    <div class="calendar-header">Thu</div>
+                    <div class="calendar-header">Fri</div>
+                    <div class="calendar-header">Sat</div>
+                `;
+
+                const firstDayWeek = firstDay.getDay();
+                for (let i = 0; i < firstDayWeek; i++) {
+                    html += `<div class="calendar-day"></div>`;
+                }
+
+                for (let day = 1; day <= lastDay.getDate(); day++) {
+                    const dateStr = `${this.currentYear}-${String(this.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const data = ledger[dateStr] || { transactions: [], balance: 0 };
+                    const isWarning = data.balance < this.settings.safetyBuffer;
+
+                    html += `
+                        <div class="calendar-day ${isWarning ? 'warning' : ''}" onclick="app.showDayDetail('${dateStr}')">
+                            <div style="font-weight: 600; margin-bottom: 0.5rem;">${day}</div>
+                            <div style="font-size: 0.7rem; margin: 0.25rem 0;">
+                                ${data.transactions.length} items
+                            </div>
+                            <div style="font-size: 0.75rem; font-weight: 600;" class="${data.balance >= 0 ? 'text-success' : 'text-danger'}">
+                                ${this.formatCurrency(data.balance)}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                document.getElementById('calendarGrid').innerHTML = html;
+            },
+
+            previousMonth() {
+                this.currentMonth--;
+                if (this.currentMonth < 0) {
+                    this.currentMonth = 11;
+                    this.currentYear--;
+                }
+                this.updateCalendar();
+            },
+
+            nextMonth() {
+                this.currentMonth++;
+                if (this.currentMonth > 11) {
+                    this.currentMonth = 0;
+                    this.currentYear++;
+                }
+                this.updateCalendar();
+            },
+
+            goToToday() {
+                const today = new Date();
+                this.currentMonth = today.getMonth();
+                this.currentYear = today.getFullYear();
+                this.updateCalendar();
+            },
+
+            // SAVINGS PLANS
+            showCreateSavingsPlan() {
+                document.getElementById('createSavingsPlanModal').classList.add('active');
+            },
+
+            createSavingsPlan() {
+                const name = document.getElementById('savingsPlanName').value.trim();
+                const goal = parseFloat(document.getElementById('savingsPlanGoal').value);
+                const amount = parseFloat(document.getElementById('savingsPlanAmount').value);
+                const frequency = document.getElementById('savingsPlanFrequency').value;
+                const current = parseFloat(document.getElementById('savingsPlanCurrent').value) || 0;
+
+                if (!name || !goal || !amount) {
+                    alert('Fill all fields');
+                    return;
+                }
+
+                const planId = Date.now().toString();
+                this.savingsPlans[planId] = {
+                    id: planId,
+                    name,
+                    goal,
+                    amount,
+                    frequency,
+                    currentSaved: current,
+                    contributions: []
+                };
+
+                this.saveData();
+                this.closeModal('createSavingsPlanModal');
+                this.renderSavingsPlans();
+            },
+
+            renderSavingsPlans() {
+                const plans = Object.values(this.savingsPlans);
+                
+                if (plans.length === 0) {
+                    document.getElementById('savingsPlansContainer').innerHTML = 
+                        '<div style="text-align: center; color: var(--text-secondary); padding: 3rem;">No plans yet</div>';
+                    return;
+                }
+
+                let html = '';
+                plans.forEach(plan => {
+                    const progress = (plan.currentSaved / plan.goal) * 100;
+                    const remaining = plan.goal - plan.currentSaved;
+
+                    html += `
+                        <div class="savings-plan-card">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                <div>
+                                    <div style="font-weight: 600; font-size: 1.125rem;">${plan.name}</div>
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                                        Goal: ${this.formatCurrency(plan.goal)}
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-success" onclick="app.recordContribution('${plan.id}')">
+                                    + Add
+                                </button>
+                            </div>
+                            <div class="savings-progress-bar">
+                                <div class="savings-progress-fill" style="width: ${Math.min(progress, 100)}%">
+                                    ${progress.toFixed(1)}%
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem; text-align: center;">
+                                <div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Current</div>
+                                    <div style="font-weight: 700; font-size: 1.125rem;">${this.formatCurrency(plan.currentSaved)}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Remaining</div>
+                                    <div style="font-weight: 700; font-size: 1.125rem;">${this.formatCurrency(remaining)}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Progress</div>
+                                    <div style="font-weight: 700; font-size: 1.125rem;">${progress.toFixed(0)}%</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                document.getElementById('savingsPlansContainer').innerHTML = html;
+            },
+
+            recordContribution(planId) {
+                const amount = prompt('Contribution amount:');
+                if (!amount) return;
+
+                const plan = this.savingsPlans[planId];
+                plan.currentSaved += parseFloat(amount);
+                plan.contributions.push({ amount: parseFloat(amount), date: new Date().toISOString() });
+
+                this.saveData();
+                this.renderSavingsPlans();
+            },
+
+            // ALERTS
+            updateAlerts() {
+                const alerts = [];
+                
+                const today = new Date();
+                const weekAgo = new Date();
+                weekAgo.setDate(today.getDate() - 7);
+
+                const ledger = this.calculateRunningBalance(weekAgo, today);
+                
+                Object.keys(this.paymentInstances).forEach(key => {
+                    const instance = this.paymentInstances[key];
+                    if (instance.status === 'unpaid') {
+                        const date = new Date(instance.date);
+                        if (date < today) {
+                            alerts.push({ type: 'missed', message: `Missed: ${instance.date}`, severity: 'high' });
+                        }
+                    }
+                });
+
+                Object.keys(ledger).forEach(dateStr => {
+                    const data = ledger[dateStr];
+                    if (data.balance < 0) {
+                        alerts.push({ type: 'negative', message: `Negative: ${dateStr}`, severity: 'high' });
+                    } else if (data.balance < this.settings.safetyBuffer) {
+                        alerts.push({ type: 'low', message: `Low: ${dateStr}`, severity: 'medium' });
+                    }
+                });
+
+                const badge = document.getElementById('alertBadge');
+                const count = document.getElementById('alertCount');
+                
+                if (alerts.length > 0) {
+                    badge.classList.add('active');
+                    count.textContent = alerts.length;
+                } else {
+                    badge.classList.remove('active');
+                }
+
+                this.currentAlerts = alerts;
+            },
+
+            showAlerts() {
+                let html = '';
+                
+                if (!this.currentAlerts || this.currentAlerts.length === 0) {
+                    html = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">No alerts</div>';
+                } else {
+                    this.currentAlerts.forEach(alert => {
+                        const color = alert.severity === 'high' ? 'var(--danger-color)' : 'var(--warning-color)';
+                        html += `
+                            <div style="padding: 1rem; border-left: 4px solid ${color}; background: var(--background); margin-bottom: 0.75rem; border-radius: 4px;">
+                                <div style="font-weight: 600;">${alert.type === 'missed' ? '⚠️ Missed Payment' : alert.type === 'negative' ? '🚨 Negative' : '⚠️ Low Balance'}</div>
+                                <div style="font-size: 0.875rem; color: var(--text-secondary);">${alert.message}</div>
+                            </div>
+                        `;
+                    });
+                }
+
+                document.getElementById('alertsList').innerHTML = html;
+                document.getElementById('alertsModal').classList.add('active');
+            },
+
+            // CORE
+            formatCurrency(amount) {
+                return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+            },
+
+            normalizeToMonthly(amount, frequency) {
+                const m = { 'daily': 30.4375, 'weekly': 4.3333, 'biweekly': 2.1666, 'monthly': 1, 'quarterly': 1/3, 'annually': 1/12 };
+                return amount * (m[frequency] || 0);
+            },
+
+            generateTransactions(startDate, endDate) {
+                const data = this.getCurrentData();
+                if (!data) return [];
+
+                const transactions = [];
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+
+                data.incomes.forEach(income => this.generateItemTransactions(income, start, end, transactions, true));
+                data.expenses.forEach(expense => this.generateItemTransactions(expense, start, end, transactions, false));
+
+                transactions.sort((a, b) => a.date - b.date);
+                return transactions;
+            },
+
+            generateItemTransactions(item, startDate, endDate, transactions, isIncome) {
+                const itemStart = new Date(item.startDate);
+                const itemEnd = item.endDate ? new Date(item.endDate) : endDate;
+                let currentDate = new Date(itemStart);
+
+                while (currentDate <= itemEnd && currentDate <= endDate) {
+                    if (currentDate >= startDate) {
+                        const dateStr = currentDate.toISOString().split('T')[0];
+                        const instanceKey = `${item.id}_${dateStr}`;
+                        const instance = this.paymentInstances[instanceKey];
+                        
+                        if (!instance || instance.status !== 'unpaid') {
+                            const amount = instance && instance.amount !== undefined ? instance.amount : item.amount;
+                            
+                            transactions.push({
+                                date: new Date(currentDate),
+                                name: item.name,
+                                amount: isIncome ? amount : -amount,
+                                category: item.category,
+                                id: item.id
+                            });
+                        }
+                    }
+
+                    switch (item.frequency) {
+                        case 'daily': currentDate.setDate(currentDate.getDate() + 1); break;
+                        case 'weekly': currentDate.setDate(currentDate.getDate() + 7); break;
+                        case 'biweekly': currentDate.setDate(currentDate.getDate() + 14); break;
+                        case 'monthly': currentDate.setMonth(currentDate.getMonth() + 1); break;
+                    }
+                }
+            },
+
+            calculateRunningBalance(startDate, endDate) {
+                const transactions = this.generateTransactions(startDate, endDate);
+                const ledger = {};
+
+                let runningBalance = this.settings.startingBalance || 0;
+
+                const data = this.getCurrentData();
+                if (data) {
+                    const startingAsset = data.assets.find(a => a.isStartingBalance);
+                    if (startingAsset) runningBalance = startingAsset.value;
+                }
+
+                let current = new Date(startDate);
+                const end = new Date(endDate);
+
+                while (current <= end) {
+                    const dateStr = current.toISOString().split('T')[0];
+                    const dayTransactions = transactions.filter(t => t.date.toISOString().split('T')[0] === dateStr);
+
+                    const netChange = dayTransactions.reduce((sum, t) => sum + t.amount, 0);
+                    runningBalance += netChange;
+
+                    ledger[dateStr] = {
+                        date: new Date(current),
+                        transactions: dayTransactions,
+                        netChange,
+                        balance: runningBalance
+                    };
+
+                    current.setDate(current.getDate() + 1);
+                }
+
+                return ledger;
+            },
+
+            calculateMetrics() {
+                const data = this.getCurrentData();
+                if (!data) return;
+
+                let totalAssets = 0;
+                data.assets.forEach(asset => totalAssets += asset.value || 0);
+
+                let monthlyIncome = 0;
+                data.incomes.forEach(income => monthlyIncome += this.normalizeToMonthly(income.amount, income.frequency));
+
+                let monthlyExpenses = 0;
+                data.expenses.forEach(expense => monthlyExpenses += this.normalizeToMonthly(expense.amount, expense.frequency));
+
+                document.getElementById('netWorthValue').textContent = this.formatCurrency(totalAssets);
+                document.getElementById('monthlyIncome').textContent = this.formatCurrency(monthlyIncome);
+                document.getElementById('monthlyExpenses').textContent = this.formatCurrency(monthlyExpenses);
+            },
+
+            showAddItemModal() {
+                this.editingItemId = null;
+                this.editingItemData = null;
+                document.getElementById('addItemModalTitle').textContent = 'Add New Item';
+                document.getElementById('saveItemButton').textContent = 'Add Item';
+                this.clearForm();
+                document.getElementById('addItemModal').classList.add('active');
+            },
+
+            saveItemFromModal() {
+                if (this.isCombinedMode) {
+                    alert('Cannot edit in combined mode');
+                    return;
+                }
+
+                const type = document.getElementById('itemType').value;
+                const name = document.getElementById('itemName').value.trim();
+                
+                if (!name) {
+                    alert('Name required');
+                    return;
+                }
+
+                let data = { type, name };
+
+                if (type === 'asset') {
+                    data.value = parseFloat(document.getElementById('assetValue').value) || 0;
+                    data.isStartingBalance = document.getElementById('isStartingBalance').checked;
+                } else {
+                    data.amount = parseFloat(document.getElementById('itemAmount').value) || 0;
+                    data.frequency = document.getElementById('itemFrequency').value;
+                    data.startDate = document.getElementById('itemStartDate').value;
+                    data.endDate = document.getElementById('hasEndDate').checked ? document.getElementById('itemEndDate').value : null;
+                    data.category = document.getElementById('itemCategory').value;
+                }
+
+                const profile = this.profiles[this.currentProfile];
+
+                if (this.editingItemId !== null) {
+                    // Editing existing item - show historical edit modal
+                    this.editingItemData = data;
+                    this.closeModal('addItemModal');
+                    document.getElementById('historicalEditModal').classList.add('active');
+                } else {
+                    // Adding new item
+                    data.id = Date.now().toString();
+                    
+                    if (type === 'asset') profile.assets.push(data);
+                    else if (type === 'income') profile.incomes.push(data);
+                    else profile.expenses.push(data);
+                    
+                    this.saveData();
+                    this.closeModal('addItemModal');
+                    this.renderAll();
+                    this.update7DayForecast();
+                }
+            },
+
+            addOrUpdateItem() {
+                // This function is now replaced by saveItemFromModal
+                this.saveItemFromModal();
+            },
+
+            applyHistoricalEdit() {
+                const mode = document.querySelector('input[name="editMode"]:checked').value;
+                
+                if (mode === 'all') {
+                    const profile = this.profiles[this.currentProfile];
+                    const type = this.editingItemData.type;
+                    const listName = type === 'asset' ? 'assets' : (type === 'income' ? 'incomes' : 'expenses');
+                    const index = profile[listName].findIndex(item => item.id === this.editingItemId);
+                    
+                    if (index !== -1) {
+                        profile[listName][index] = { ...this.editingItemData, id: this.editingItemId };
+                    }
+                }
+
+                this.saveData();
+                this.clearForm();
+                this.renderAll();
+                this.update7DayForecast();
+                this.closeModal('historicalEditModal');
+            },
+
+            updateFormFields() {
+                const type = document.getElementById('itemType').value;
+                document.getElementById('financialFields').style.display = type === 'asset' ? 'none' : 'block';
+                document.getElementById('assetFields').style.display = type === 'asset' ? 'block' : 'none';
+            },
+
+            toggleEndDate() {
+                document.getElementById('itemEndDate').disabled = !document.getElementById('hasEndDate').checked;
+            },
+
+            clearForm() {
+                document.getElementById('itemName').value = '';
+                document.getElementById('itemAmount').value = '';
+                document.getElementById('itemStartDate').valueAsDate = new Date();
+                document.getElementById('hasEndDate').checked = false;
+                document.getElementById('itemEndDate').disabled = true;
+                document.getElementById('itemEndDate').value = '';
+                document.getElementById('assetValue').value = '';
+                document.getElementById('isStartingBalance').checked = false;
+                this.editingItemId = null;
+                this.editingItemData = null;
+                document.getElementById('addItemModalTitle').textContent = 'Add New Item';
+                document.getElementById('saveItemButton').textContent = 'Add Item';
+            },
+
+            renderDataTree() {
+                const data = this.getCurrentData();
+                if (!data) return;
+
+                let html = '<li class="tree-category"><div class="tree-category-header">Incomes</div>';
+                data.incomes.forEach(item => {
+                    html += `<div class="tree-item" onclick="app.editItem('${item.id}')"><div style="font-weight: 500;">${item.name}</div><div style="font-size: 0.75rem; color: var(--text-secondary);">${this.formatCurrency(item.amount)}</div></div>`;
+                });
+                html += '</li>';
+
+                html += '<li class="tree-category"><div class="tree-category-header">Expenses</div>';
+                data.expenses.forEach(item => {
+                    html += `<div class="tree-item" onclick="app.editItem('${item.id}')"><div style="font-weight: 500;">${item.name}</div><div style="font-size: 0.75rem; color: var(--text-secondary);">${this.formatCurrency(item.amount)}</div></div>`;
+                });
+                html += '</li>';
+
+                document.getElementById('dataTree').innerHTML = html;
+            },
+
+            editItem(id) {
+                if (this.isCombinedMode) return;
+
+                const profile = this.profiles[this.currentProfile];
+                let item = profile.incomes.find(i => i.id === id) || 
+                           profile.expenses.find(i => i.id === id) ||
+                           profile.assets.find(i => i.id === id);
+                
+                if (!item) return;
+
+                this.editingItemId = id;
+                document.getElementById('addItemModalTitle').textContent = 'Edit Item';
+                document.getElementById('saveItemButton').textContent = 'Update Item';
+                
+                document.getElementById('itemName').value = item.name;
+                
+                if (item.value !== undefined) {
+                    document.getElementById('itemType').value = 'asset';
+                    this.updateFormFields();
+                    document.getElementById('assetValue').value = item.value;
+                    document.getElementById('isStartingBalance').checked = item.isStartingBalance || false;
+                } else {
+                    document.getElementById('itemType').value = item.amount > 0 ? 'income' : 'expense';
+                    this.updateFormFields();
+                    document.getElementById('itemAmount').value = Math.abs(item.amount);
+                    document.getElementById('itemFrequency').value = item.frequency;
+                    document.getElementById('itemStartDate').value = item.startDate;
+                    if (item.endDate) {
+                        document.getElementById('hasEndDate').checked = true;
+                        document.getElementById('itemEndDate').disabled = false;
+                        document.getElementById('itemEndDate').value = item.endDate;
+                    }
+                    document.getElementById('itemCategory').value = item.category;
+                }
+
+                document.getElementById('addItemModal').classList.add('active');
+            },
+
+            renderProfileSelector() {
+                if (this.isCombinedMode) return;
+                const profiles = Object.keys(this.profiles);
+                document.getElementById('profileSelector').innerHTML = profiles.map(p => 
+                    `<option value="${p}" ${p === this.currentProfile ? 'selected' : ''}>${p}</option>`
+                ).join('');
+                document.getElementById('profileSubtitle').textContent = `Profile: ${this.currentProfile}`;
+            },
+
+            switchProfile() {
+                const newProfile = document.getElementById('profileSelector').value;
+                if (newProfile !== this.currentProfile) {
+                    this.currentProfile = newProfile;
+                    this.settings.lastUsedProfile = newProfile;
+                    this.saveData();
+                    this.renderAll();
+                    this.update7DayForecast();
+                }
+            },
+
+            showProfileManager() {
+                const profiles = Object.keys(this.profiles);
+                document.getElementById('deleteProfileSelect').innerHTML = profiles.map(p => 
+                    `<option value="${p}">${p}</option>`
+                ).join('');
+                document.getElementById('profileManagerModal').classList.add('active');
+            },
+
+            createNewProfile() {
+                const name = document.getElementById('newProfileName').value.trim();
+                if (!name) return;
+                if (this.profiles[name]) {
+                    alert('Profile exists');
+                    return;
+                }
+                this.profiles[name] = { name, assets: [], incomes: [], expenses: [] };
+                this.saveData();
+                this.renderProfileSelector();
+                document.getElementById('newProfileName').value = '';
+            },
+
+            deleteProfile() {
+                if (Object.keys(this.profiles).length === 1) {
+                    alert('Cannot delete last profile');
+                    return;
+                }
+                const name = document.getElementById('deleteProfileSelect').value;
+                if (!confirm(`Delete ${name}?`)) return;
+                delete this.profiles[name];
+                if (this.currentProfile === name) {
+                    this.currentProfile = Object.keys(this.profiles)[0];
+                    this.settings.lastUsedProfile = this.currentProfile;
+                }
+                this.saveData();
+                this.renderAll();
+                this.closeModal('profileManagerModal');
+            },
+
+            showCombinedMode() {
+                document.getElementById('combinedModeModal').classList.add('active');
+            },
+
+            exitCombinedMode() {
+                this.isCombinedMode = false;
+                this.renderAll();
+            },
+
+            showSettings() {
+                document.getElementById('safetyBuffer').value = this.settings.safetyBuffer;
+                document.getElementById('settingsModal').classList.add('active');
+            },
+
+            saveSettings() {
+                this.settings.safetyBuffer = parseFloat(document.getElementById('safetyBuffer').value) || 500;
+                this.saveData();
+                this.closeModal('settingsModal');
+                this.renderAll();
+            },
+
+            closeModal(id) {
+                document.getElementById(id).classList.remove('active');
+            },
+
+            renderAll() {
+                this.renderProfileSelector();
+                this.renderDataTree();
+                this.calculateMetrics();
+                this.updateCalendar();
+                this.update7DayForecast();
+                this.updateAlerts();
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
