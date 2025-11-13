@@ -665,6 +665,30 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* */
+        .profile-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .profile-list-item:last-child {
+            border-bottom: none;
+        }
+        .profile-list-item-name {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 500;
+        }
+        .profile-list-item-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        /* */
+
+
         @media (max-width: 768px) {
             .data-layout { 
                 grid-template-columns: 1fr; 
@@ -912,7 +936,45 @@
 
     <input type="file" id="fileInput" accept=".json" multiple>
 
-    <!-- Savings Plan Modal -->
+    <div id="profileManagerModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 class="modal-title">Profile Manager</h2>
+                <button class="modal-close" onclick="app.closeProfileManager()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    
+                    <div class="panel">
+                        <h3 class="panel-title">Create New Profile</h3>
+                        <div class="form-group">
+                            <label class="form-label" for="newProfileName">New Profile Name</label>
+                            <input type="text" id="newProfileName" class="form-control" placeholder="e.g., Family Budget">
+                        </div>
+                        <button class="btn btn-primary" onclick="app.createNewProfile()">Create Profile</button>
+                    </div>
+
+                    <div class="panel">
+                        <h3 class="panel-title">Combine Profiles</h3>
+                        <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                            Select two or more profiles from the list below to create a temporary "Combined View".
+                        </p>
+                        <button class="btn btn-success" onclick="app.combineSelectedProfiles()">Combine Selected Profiles</button>
+                    </div>
+
+                </div>
+
+                <div class="panel" style="margin-top: 1.5rem;">
+                    <h3 class="panel-title">Existing Profiles</h3>
+                    <div id="profileListContainer">
+                        </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="app.closeProfileManager()">Close</button>
+            </div>
+        </div>
+    </div>
     <div id="savingsPlanModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -951,7 +1013,6 @@
         </div>
     </div>
 
-    <!-- Savings Transaction Modal -->
     <div id="savingsTransactionModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -979,7 +1040,6 @@
         </div>
     </div>
 
-    <!-- Savings Detail Modal -->
     <div id="savingsDetailModal" class="modal">
         <div class="modal-content large">
             <div class="modal-header">
@@ -1028,6 +1088,7 @@
             currentYear: new Date().getFullYear(),
             reportChart: null,
             isCombinedMode: false,
+            virtualCombinedData: null, // NEW: To hold combined data
             currentTransactionInstance: null,
             currentAlerts: [],
             isSyncing: false,
@@ -2153,9 +2214,157 @@
                 alert('Add item modal - Feature coming soon! Use import to load data.');
             },
 
+            // ============ NEW PROFILE MANAGEMENT FUNCTIONS ============
+
             showProfileManager() {
-                alert('Profile manager - Feature coming soon!');
+                this.renderProfileList();
+                document.getElementById('profileManagerModal').classList.add('active');
             },
+
+            closeProfileManager() {
+                document.getElementById('profileManagerModal').classList.remove('active');
+            },
+
+            renderProfileList() {
+                const container = document.getElementById('profileListContainer');
+                container.innerHTML = '';
+                
+                Object.keys(this.profiles).forEach(profileName => {
+                    const item = document.createElement('div');
+                    item.className = 'profile-list-item';
+                    
+                    item.innerHTML = `
+                        <div class="profile-list-item-name">
+                            <input type="checkbox" class="profile-combine-check" data-profile-name="${profileName}">
+                            <span>${profileName}</span>
+                        </div>
+                        <div class="profile-list-item-actions">
+                            <button class="btn btn-sm btn-secondary" onclick="app.renameProfile('${profileName}')">Rename</button>
+                            <button class="btn btn-sm btn-danger" onclick="app.deleteProfile('${profileName}')">Delete</button>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+            },
+
+            createNewProfile() {
+                const inputEl = document.getElementById('newProfileName');
+                const newName = inputEl.value.trim();
+
+                if (!newName) {
+                    alert('Please enter a profile name.');
+                    return;
+                }
+
+                if (this.profiles[newName]) {
+                    alert('A profile with this name already exists.');
+                    return;
+                }
+
+                this.profiles[newName] = { name: newName, assets: [], incomes: [], expenses: [] };
+                this.currentProfile = newName;
+                this.settings.lastUsedProfile = newName;
+                
+                this.saveData();
+                this.renderProfileList();
+                this.renderAll();
+                
+                inputEl.value = '';
+                alert(`Profile "${newName}" created and set as active.`);
+            },
+
+            renameProfile(oldName) {
+                const newName = prompt(`Enter new name for "${oldName}":`, oldName);
+
+                if (!newName || newName.trim() === '') {
+                    return; // User cancelled
+                }
+
+                if (newName === oldName) {
+                    return; // No change
+                }
+
+                if (this.profiles[newName]) {
+                    alert('A profile with this name already exists.');
+                    return;
+                }
+
+                // Rename
+                this.profiles[newName] = this.profiles[oldName];
+                this.profiles[newName].name = newName; // Update internal name
+                delete this.profiles[oldName];
+
+                if (this.currentProfile === oldName) {
+                    this.currentProfile = newName;
+                    this.settings.lastUsedProfile = newName;
+                }
+
+                this.saveData();
+                this.renderProfileList();
+                this.renderAll();
+            },
+
+            deleteProfile(profileName) {
+                if (Object.keys(this.profiles).length <= 1) {
+                    alert('Cannot delete the last profile.');
+                    return;
+                }
+
+                if (confirm(`Are you sure you want to delete profile "${profileName}"? This cannot be undone.`)) {
+                    delete this.profiles[profileName];
+
+                    if (this.currentProfile === profileName) {
+                        this.currentProfile = Object.keys(this.profiles)[0];
+                        this.settings.lastUsedProfile = this.currentProfile;
+                    }
+
+                    this.saveData();
+                    this.renderProfileList();
+                    this.renderAll();
+                }
+            },
+
+            combineSelectedProfiles() {
+                const selectedCheckboxes = document.querySelectorAll('.profile-combine-check:checked');
+                const selectedProfiles = Array.from(selectedCheckboxes).map(cb => cb.dataset.profileName);
+
+                if (selectedProfiles.length < 2) {
+                    alert('Please select at least two profiles to combine.');
+                    return;
+                }
+
+                if (!confirm(`This will create a temporary "Combined View" from ${selectedProfiles.length} profiles. This view is read-only. Continue?`)) {
+                    return;
+                }
+
+                // Create virtual data
+                this.virtualCombinedData = {
+                    name: 'Combined View',
+                    assets: [],
+                    incomes: [],
+                    expenses: []
+                };
+
+                selectedProfiles.forEach(profileName => {
+                    const profile = this.profiles[profileName];
+                    if (profile) {
+                        this.virtualCombinedData.assets.push(...profile.assets);
+                        this.virtualCombinedData.incomes.push(...profile.incomes);
+                        this.virtualCombinedData.expenses.push(...profile.expenses);
+                    }
+                });
+
+                this.isCombinedMode = true;
+                document.getElementById('combinedBadge').style.display = 'inline-block';
+                document.getElementById('exitCombinedBtn').style.display = 'inline-block';
+                document.getElementById('profileSubtitle').textContent = `Combined View (${selectedProfiles.length} profiles)`;
+
+                this.closeProfileManager();
+                this.renderAll();
+            },
+            
+            // ============ END NEW PROFILE MANAGEMENT FUNCTIONS ============
+
 
             exportCurrentProfile() {
                 const data = {
@@ -2445,6 +2654,7 @@
 
             exitCombinedMode() {
                 this.isCombinedMode = false;
+                this.virtualCombinedData = null;
                 document.getElementById('combinedBadge').style.display = 'none';
                 document.getElementById('exitCombinedBtn').style.display = 'none';
                 this.renderAll();
@@ -2477,7 +2687,13 @@
             },
 
             renderAll() {
-                this.renderProfileSelector();
+                if (this.isCombinedMode) {
+                    document.getElementById('profileSelector').disabled = true;
+                } else {
+                    document.getElementById('profileSelector').disabled = false;
+                    this.renderProfileSelector();
+                }
+                
                 this.renderDataTree();
                 this.calculateMetrics();
                 this.updateCalendar();
