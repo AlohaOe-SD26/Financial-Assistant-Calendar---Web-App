@@ -912,6 +912,90 @@
 
     <input type="file" id="fileInput" accept=".json" multiple>
 
+    <!-- Savings Plan Modal -->
+    <div id="savingsPlanModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="savingsPlanModalTitle">Create Savings Plan</h2>
+                <button class="modal-close" onclick="app.closeSavingsPlanModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Goal Name</label>
+                    <input type="text" id="savingsPlanName" class="form-control" placeholder="e.g., Emergency Fund, Vacation">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Target Amount ($)</label>
+                    <input type="number" id="savingsPlanTarget" class="form-control" step="0.01" placeholder="5000.00">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Target Date (Optional)</label>
+                    <input type="date" id="savingsPlanDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select id="savingsPlanCategory" class="form-control">
+                        <option value="emergency">Emergency Fund</option>
+                        <option value="vacation">Vacation</option>
+                        <option value="purchase">Large Purchase</option>
+                        <option value="education">Education</option>
+                        <option value="retirement">Retirement</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="app.closeSavingsPlanModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="app.saveSavingsPlan()">Save Plan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Savings Transaction Modal -->
+    <div id="savingsTransactionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="savingsTransactionTitle">Add Contribution</h2>
+                <button class="modal-close" onclick="app.closeSavingsTransactionModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Amount ($)</label>
+                    <input type="number" id="savingsTransactionAmount" class="form-control" step="0.01" placeholder="100.00">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" id="savingsTransactionDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Note (Optional)</label>
+                    <input type="text" id="savingsTransactionNote" class="form-control" placeholder="e.g., Bonus payment">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="app.closeSavingsTransactionModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="app.saveSavingsTransaction()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Savings Detail Modal -->
+    <div id="savingsDetailModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 class="modal-title" id="savingsDetailTitle">Savings Plan Details</h2>
+                <button class="modal-close" onclick="app.closeSavingsDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="savingsDetailContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" onclick="app.deleteSavingsPlan()">Delete Plan</button>
+                <button class="btn btn-secondary" onclick="app.closeSavingsDetailModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_KEY = 'AIzaSyCeGRt1vaUNWc_ZMBsg26wR-wfSH8C3GKU';
         const CLIENT_ID = '994220951699-f5k7j6fig37c6gb9d9igjb9jjqoio59q.apps.googleusercontent.com';
@@ -947,6 +1031,11 @@
             currentTransactionInstance: null,
             currentAlerts: [],
             isSyncing: false,
+            
+            // Savings state
+            currentSavingsPlanId: null,
+            currentSavingsTransactionType: null,
+            currentEditingSavingsPlan: null,
 
             // ============ GOOGLE AUTHENTICATION (GIS) ============
             
@@ -1673,7 +1762,139 @@
 
             renderSavingsPlans() {
                 const container = document.getElementById('savingsPlansContainer');
-                container.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">Savings plans feature coming soon!</div>';
+                
+                if (Object.keys(this.savingsPlans).length === 0) {
+                    container.innerHTML = `
+                        <div style="padding: 3rem; text-align: center; color: var(--text-secondary);">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">🎯</div>
+                            <h3>No Savings Plans Yet</h3>
+                            <p style="margin-top: 0.5rem;">Create your first savings goal to start tracking your progress!</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '';
+                Object.entries(this.savingsPlans).forEach(([id, plan]) => {
+                    const currentAmount = plan.currentAmount || 0;
+                    const targetAmount = plan.targetAmount || 1;
+                    const progress = Math.min((currentAmount / targetAmount) * 100, 100);
+                    const remaining = Math.max(targetAmount - currentAmount, 0);
+                    
+                    // Calculate projection
+                    let projectionText = '';
+                    if (plan.targetDate && remaining > 0) {
+                        const today = new Date();
+                        const targetDate = new Date(plan.targetDate);
+                        const daysRemaining = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
+                        
+                        if (daysRemaining > 0) {
+                            const avgContribution = this.calculateAverageContribution(plan);
+                            if (avgContribution > 0) {
+                                const daysNeeded = Math.ceil(remaining / avgContribution);
+                                const projectedDate = new Date(today);
+                                projectedDate.setDate(projectedDate.getDate() + daysNeeded);
+                                
+                                if (projectedDate <= targetDate) {
+                                    projectionText = `<div style="color: var(--success-color); font-size: 0.875rem; margin-top: 0.5rem;">
+                                        ✓ On track to reach goal by ${projectedDate.toLocaleDateString()}
+                                    </div>`;
+                                } else {
+                                    const neededPerDay = (remaining / daysRemaining).toFixed(2);
+                                    projectionText = `<div style="color: var(--warning-color); font-size: 0.875rem; margin-top: 0.5rem;">
+                                        ⚠ Need ${this.formatCurrency(neededPerDay)}/day to reach goal on time
+                                    </div>`;
+                                }
+                            }
+                        } else if (daysRemaining < 0) {
+                            projectionText = `<div style="color: var(--danger-color); font-size: 0.875rem; margin-top: 0.5rem;">
+                                Target date passed
+                            </div>`;
+                        }
+                    }
+                    
+                    const categoryIcons = {
+                        emergency: '🚨',
+                        vacation: '✈️',
+                        purchase: '🛍️',
+                        education: '🎓',
+                        retirement: '🏖️',
+                        other: '💰'
+                    };
+                    
+                    html += `
+                        <div class="savings-plan-card">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <div>
+                                    <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">
+                                        ${categoryIcons[plan.category] || '💰'} ${plan.name}
+                                    </div>
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                                        ${plan.category.charAt(0).toUpperCase() + plan.category.slice(1)}
+                                        ${plan.targetDate ? ' • Target: ' + new Date(plan.targetDate).toLocaleDateString() : ''}
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-primary" onclick="app.showSavingsDetail('${id}')">
+                                    Details
+                                </button>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                <div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Current</div>
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--success-color);">
+                                        ${this.formatCurrency(currentAmount)}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Target</div>
+                                    <div style="font-size: 1.5rem; font-weight: 700;">
+                                        ${this.formatCurrency(targetAmount)}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="savings-progress-bar">
+                                <div class="savings-progress-fill" style="width: ${progress}%">
+                                    ${progress.toFixed(1)}%
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; justify-content: space-between; margin-top: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
+                                <span>Remaining: ${this.formatCurrency(remaining)}</span>
+                                <span>${plan.transactions ? plan.transactions.length : 0} transactions</span>
+                            </div>
+                            
+                            ${projectionText}
+                            
+                            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                                <button class="btn btn-sm btn-success" onclick="app.showAddContribution('${id}')">
+                                    + Deposit
+                                </button>
+                                <button class="btn btn-sm btn-warning" onclick="app.showAddWithdrawal('${id}')">
+                                    - Withdraw
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+            },
+
+            calculateAverageContribution(plan) {
+                if (!plan.transactions || plan.transactions.length === 0) return 0;
+                
+                const deposits = plan.transactions.filter(t => t.type === 'deposit');
+                if (deposits.length === 0) return 0;
+                
+                const sortedDeposits = deposits.sort((a, b) => new Date(a.date) - new Date(b.date));
+                const firstDate = new Date(sortedDeposits[0].date);
+                const lastDate = new Date(sortedDeposits[sortedDeposits.length - 1].date);
+                const daysBetween = Math.max((lastDate - firstDate) / (1000 * 60 * 60 * 24), 1);
+                
+                const totalDeposited = deposits.reduce((sum, t) => sum + t.amount, 0);
+                return totalDeposited / daysBetween;
             },
 
             updateReports() {
@@ -1990,7 +2211,236 @@
             },
 
             showCreateSavingsPlan() {
-                alert('Create savings plan - Feature coming soon!');
+                this.currentEditingSavingsPlan = null;
+                document.getElementById('savingsPlanModalTitle').textContent = 'Create Savings Plan';
+                document.getElementById('savingsPlanName').value = '';
+                document.getElementById('savingsPlanTarget').value = '';
+                document.getElementById('savingsPlanDate').value = '';
+                document.getElementById('savingsPlanCategory').value = 'emergency';
+                document.getElementById('savingsPlanModal').classList.add('active');
+            },
+
+            closeSavingsPlanModal() {
+                document.getElementById('savingsPlanModal').classList.remove('active');
+            },
+
+            saveSavingsPlan() {
+                const name = document.getElementById('savingsPlanName').value.trim();
+                const target = parseFloat(document.getElementById('savingsPlanTarget').value);
+                const targetDate = document.getElementById('savingsPlanDate').value;
+                const category = document.getElementById('savingsPlanCategory').value;
+
+                if (!name) {
+                    alert('Please enter a goal name');
+                    return;
+                }
+
+                if (!target || target <= 0) {
+                    alert('Please enter a valid target amount');
+                    return;
+                }
+
+                const planId = this.currentEditingSavingsPlan || 'savings_' + Date.now();
+                
+                this.savingsPlans[planId] = {
+                    id: planId,
+                    name: name,
+                    targetAmount: target,
+                    currentAmount: this.savingsPlans[planId]?.currentAmount || 0,
+                    targetDate: targetDate || null,
+                    category: category,
+                    createdDate: this.savingsPlans[planId]?.createdDate || new Date().toISOString(),
+                    transactions: this.savingsPlans[planId]?.transactions || []
+                };
+
+                this.closeSavingsPlanModal();
+                this.saveData();
+                this.renderSavingsPlans();
+            },
+
+            showAddContribution(planId) {
+                this.currentSavingsPlanId = planId;
+                this.currentSavingsTransactionType = 'deposit';
+                document.getElementById('savingsTransactionTitle').textContent = 'Add Deposit';
+                document.getElementById('savingsTransactionAmount').value = '';
+                document.getElementById('savingsTransactionDate').value = new Date().toISOString().split('T')[0];
+                document.getElementById('savingsTransactionNote').value = '';
+                document.getElementById('savingsTransactionModal').classList.add('active');
+            },
+
+            showAddWithdrawal(planId) {
+                this.currentSavingsPlanId = planId;
+                this.currentSavingsTransactionType = 'withdrawal';
+                document.getElementById('savingsTransactionTitle').textContent = 'Add Withdrawal';
+                document.getElementById('savingsTransactionAmount').value = '';
+                document.getElementById('savingsTransactionDate').value = new Date().toISOString().split('T')[0];
+                document.getElementById('savingsTransactionNote').value = '';
+                document.getElementById('savingsTransactionModal').classList.add('active');
+            },
+
+            closeSavingsTransactionModal() {
+                document.getElementById('savingsTransactionModal').classList.remove('active');
+            },
+
+            saveSavingsTransaction() {
+                const amount = parseFloat(document.getElementById('savingsTransactionAmount').value);
+                const date = document.getElementById('savingsTransactionDate').value;
+                const note = document.getElementById('savingsTransactionNote').value.trim();
+
+                if (!amount || amount <= 0) {
+                    alert('Please enter a valid amount');
+                    return;
+                }
+
+                if (!date) {
+                    alert('Please select a date');
+                    return;
+                }
+
+                const plan = this.savingsPlans[this.currentSavingsPlanId];
+                if (!plan) return;
+
+                if (!plan.transactions) {
+                    plan.transactions = [];
+                }
+
+                const transaction = {
+                    id: 'transaction_' + Date.now(),
+                    type: this.currentSavingsTransactionType,
+                    amount: amount,
+                    date: date,
+                    note: note,
+                    timestamp: new Date().toISOString()
+                };
+
+                plan.transactions.push(transaction);
+
+                // Update current amount
+                if (this.currentSavingsTransactionType === 'deposit') {
+                    plan.currentAmount = (plan.currentAmount || 0) + amount;
+                } else {
+                    plan.currentAmount = Math.max((plan.currentAmount || 0) - amount, 0);
+                }
+
+                this.closeSavingsTransactionModal();
+                this.saveData();
+                this.renderSavingsPlans();
+                this.renderAll(); // Update cash flow since savings affect available cash
+            },
+
+            showSavingsDetail(planId) {
+                const plan = this.savingsPlans[planId];
+                if (!plan) return;
+
+                this.currentSavingsPlanId = planId;
+                document.getElementById('savingsDetailTitle').textContent = plan.name;
+
+                const currentAmount = plan.currentAmount || 0;
+                const targetAmount = plan.targetAmount || 1;
+                const progress = Math.min((currentAmount / targetAmount) * 100, 100);
+                const remaining = Math.max(targetAmount - currentAmount, 0);
+
+                let transactionsHtml = '';
+                if (plan.transactions && plan.transactions.length > 0) {
+                    const sortedTransactions = plan.transactions.sort((a, b) => 
+                        new Date(b.date) - new Date(a.date)
+                    );
+
+                    sortedTransactions.forEach(t => {
+                        const isDeposit = t.type === 'deposit';
+                        transactionsHtml += `
+                            <div class="transaction-detail ${isDeposit ? 'income' : 'expense'}" 
+                                 style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-weight: 600;">
+                                        ${isDeposit ? '➕ Deposit' : '➖ Withdrawal'}
+                                    </div>
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                                        ${new Date(t.date).toLocaleDateString()}
+                                        ${t.note ? ' • ' + t.note : ''}
+                                    </div>
+                                </div>
+                                <div style="font-size: 1.25rem; font-weight: 700; color: ${isDeposit ? 'var(--success-color)' : 'var(--danger-color)'};">
+                                    ${isDeposit ? '+' : '-'}${this.formatCurrency(t.amount)}
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    transactionsHtml = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">No transactions yet</div>';
+                }
+
+                const content = `
+                    <div style="margin-bottom: 2rem;">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div style="background: var(--background); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.875rem; color: var(--text-secondary);">Current</div>
+                                <div style="font-size: 1.5rem; font-weight: 700; color: var(--success-color);">
+                                    ${this.formatCurrency(currentAmount)}
+                                </div>
+                            </div>
+                            <div style="background: var(--background); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.875rem; color: var(--text-secondary);">Target</div>
+                                <div style="font-size: 1.5rem; font-weight: 700;">
+                                    ${this.formatCurrency(targetAmount)}
+                                </div>
+                            </div>
+                            <div style="background: var(--background); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.875rem; color: var(--text-secondary);">Remaining</div>
+                                <div style="font-size: 1.5rem; font-weight: 700;">
+                                    ${this.formatCurrency(remaining)}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="savings-progress-bar" style="height: 32px;">
+                            <div class="savings-progress-fill" style="width: ${progress}%; font-size: 0.875rem;">
+                                ${progress.toFixed(1)}%
+                            </div>
+                        </div>
+
+                        ${plan.targetDate ? `
+                            <div style="text-align: center; margin-top: 1rem; color: var(--text-secondary); font-size: 0.875rem;">
+                                Target Date: ${new Date(plan.targetDate).toLocaleDateString()}
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="font-size: 1.125rem; font-weight: 600;">Transaction History</h3>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-sm btn-success" onclick="app.showAddContribution('${planId}'); app.closeSavingsDetailModal();">
+                                + Deposit
+                            </button>
+                            <button class="btn btn-sm btn-warning" onclick="app.showAddWithdrawal('${planId}'); app.closeSavingsDetailModal();">
+                                - Withdraw
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        ${transactionsHtml}
+                    </div>
+                `;
+
+                document.getElementById('savingsDetailContent').innerHTML = content;
+                document.getElementById('savingsDetailModal').classList.add('active');
+            },
+
+            closeSavingsDetailModal() {
+                document.getElementById('savingsDetailModal').classList.remove('active');
+            },
+
+            deleteSavingsPlan() {
+                if (!confirm('Are you sure you want to delete this savings plan? This cannot be undone.')) {
+                    return;
+                }
+
+                delete this.savingsPlans[this.currentSavingsPlanId];
+                this.closeSavingsDetailModal();
+                this.saveData();
+                this.renderSavingsPlans();
+                this.renderAll();
             },
 
             exitCombinedMode() {
