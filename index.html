@@ -1204,7 +1204,7 @@
                         this.profiles = data.profiles || {};
                         this.savingsPlans = data.savingsPlans || {};
                         this.paymentInstances = data.paymentInstances || {};
-                        this.settings = { ...this.settings, ...data.settings };
+                        this.settings = Object.assign({}, this.settings, data.settings);
                         this.settings.driveFileId = fileId;
                         
                         this.currentProfile = this.settings.lastUsedProfile || Object.keys(this.profiles)[0];
@@ -1248,7 +1248,7 @@
                         profiles: this.profiles,
                         savingsPlans: this.savingsPlans,
                         paymentInstances: this.paymentInstances,
-                        settings: { ...this.settings, driveFileId: undefined }
+                        settings: Object.assign({}, this.settings, { driveFileId: undefined })
                     };
 
                     const content = JSON.stringify(data, null, 2);
@@ -1412,14 +1412,14 @@
                     
                     data.incomes.forEach(income => {
                         if (this.isScheduledForDate(income, currentDate)) {
-                            transactions.push({ ...income, type: 'income' });
+                            transactions.push(Object.assign({}, income, { type: 'income' }));
                             balance += income.amount;
                         }
                     });
                     
                     data.expenses.forEach(expense => {
                         if (this.isScheduledForDate(expense, currentDate)) {
-                            transactions.push({ ...expense, type: 'expense' });
+                            transactions.push(Object.assign({}, expense, { type: 'expense' }));
                             balance -= expense.amount;
                         }
                     });
