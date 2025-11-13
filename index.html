@@ -954,47 +954,69 @@
             // ============ GOOGLE AUTHENTICATION (GIS) ============
             
             handleClientLoad() {
+                console.log('=== handleClientLoad called ===');
                 console.log('Initializing Google Identity Services...');
                 
                 // Wait for both GIS and GAPI to be ready
+                let attempts = 0;
                 const checkReady = setInterval(() => {
+                    attempts++;
+                    console.log(`Attempt ${attempts}: Checking for Google libraries...`);
+                    console.log('- google defined:', typeof google !== 'undefined');
+                    console.log('- gapi defined:', typeof gapi !== 'undefined');
+                    
                     if (typeof google !== 'undefined' && typeof gapi !== 'undefined') {
                         clearInterval(checkReady);
-                        console.log('Google libraries loaded');
+                        console.log('✅ Google libraries loaded successfully!');
                         this.initializeGoogleSignIn();
                         this.initializeGapi();
+                    } else if (attempts > 50) {
+                        clearInterval(checkReady);
+                        console.error('❌ Timeout waiting for Google libraries');
+                        document.getElementById('authError').style.display = 'block';
+                        document.getElementById('authError').textContent = 'Failed to load Google libraries. Please refresh the page.';
                     }
                 }, 100);
             },
 
             initializeGoogleSignIn() {
+                console.log('=== initializeGoogleSignIn called ===');
                 console.log('Initializing GIS for OAuth...');
+                console.log('CLIENT_ID:', CLIENT_ID);
+                console.log('SCOPES:', SCOPES);
                 
                 try {
+                    console.log('Creating token client...');
                     this.tokenClient = google.accounts.oauth2.initTokenClient({
                         client_id: CLIENT_ID,
                         scope: SCOPES,
                         callback: (response) => {
-                            console.log('Token received:', response);
+                            console.log('=== Token callback triggered ===');
+                            console.log('Token response:', response);
                             if (response.error) {
+                                console.error('Token error:', response.error);
                                 document.getElementById('authError').style.display = 'block';
                                 document.getElementById('authError').textContent = 'Error: ' + response.error;
                                 return;
                             }
+                            console.log('Token received successfully!');
                             this.accessToken = response.access_token;
                             this.handleSignInSuccess();
                         },
                     });
                     
-                    console.log('GIS initialized successfully');
+                    console.log('✅ Token client created successfully');
+                    console.log('tokenClient:', this.tokenClient);
                     
                     // Render custom sign-in button
                     this.renderSignInButton();
+                    console.log('✅ Sign-in button rendered');
                     
                 } catch (error) {
-                    console.error('Error initializing GIS:', error);
+                    console.error('❌ Error initializing GIS:', error);
+                    console.error('Error stack:', error.stack);
                     document.getElementById('authError').style.display = 'block';
-                    document.getElementById('authError').textContent = 'Failed to initialize sign-in. Please refresh the page.';
+                    document.getElementById('authError').textContent = 'Failed to initialize sign-in: ' + error.message + '. Please refresh the page.';
                 }
             },
 
@@ -1028,21 +1050,33 @@
             },
 
             authorize() {
-                console.log('Requesting sign-in...');
+                console.log('Authorize button clicked!');
+                console.log('tokenClient exists:', !!this.tokenClient);
+                console.log('google object exists:', typeof google !== 'undefined');
+                
                 document.getElementById('authSpinner').style.display = 'block';
                 document.getElementById('authError').style.display = 'none';
                 
                 if (!this.tokenClient) {
+                    console.error('Token client not initialized');
                     document.getElementById('authSpinner').style.display = 'none';
                     document.getElementById('authError').style.display = 'block';
-                    document.getElementById('authError').textContent = 'Sign-in not ready. Please refresh the page.';
+                    document.getElementById('authError').textContent = 'Sign-in not ready yet. Please wait a moment and try again, or refresh the page.';
                     return;
                 }
 
-                // Request an access token
-                this.tokenClient.requestAccessToken({
-                    prompt: 'consent',
-                });
+                try {
+                    console.log('Requesting access token...');
+                    // Request an access token
+                    this.tokenClient.requestAccessToken({
+                        prompt: 'consent',
+                    });
+                } catch (error) {
+                    console.error('Error requesting token:', error);
+                    document.getElementById('authSpinner').style.display = 'none';
+                    document.getElementById('authError').style.display = 'block';
+                    document.getElementById('authError').textContent = 'Sign-in failed: ' + error.message;
+                }
             },
 
             async handleSignInSuccess() {
