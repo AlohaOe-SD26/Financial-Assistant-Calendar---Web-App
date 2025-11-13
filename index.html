@@ -1124,17 +1124,6 @@
                 // This function is now replaced by handleSignInSuccess
                 // Keeping it for compatibility
             },
-                    
-                    document.getElementById('authScreen').style.display = 'none';
-                    document.getElementById('mainApp').style.display = 'flex';
-                    document.getElementById('userEmail').textContent = this.userEmail;
-                    
-                    this.loadFromDrive();
-                } else {
-                    document.getElementById('authScreen').style.display = 'flex';
-                    document.getElementById('mainApp').style.display = 'none';
-                }
-            },
 
             signOut() {
                 if (confirm('Sign out? Your data will remain in Google Drive.')) {
