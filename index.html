@@ -724,7 +724,7 @@
             </button>
             <div style="margin-top: 1rem;">
                 <div class="spinner" id="authSpinner" style="display: none;"></div>
-                <div id="authError" style="color: var(--danger-color); margin-top: 1rem; display: none;"></div>
+                <div id="authError" style="color: var(--danger-color); margin-top: 1rem; display: none; white-space: pre-wrap; text-align: left; font-size: 0.875rem; padding: 1rem; background: #fee; border-radius: 8px;"></div>
             </div>
         </div>
     </div>
@@ -939,14 +939,19 @@
             isSyncing: false,
 
             handleClientLoad() {
+                console.log('Loading Google API...');
                 gapi.load('client:auth2', () => {
+                    console.log('Google API loaded, initializing client...');
+                    console.log('Using Client ID:', CLIENT_ID);
+                    console.log('Current URL:', window.location.href);
+                    
                     gapi.client.init({
                         apiKey: API_KEY,
                         clientId: CLIENT_ID,
                         discoveryDocs: DISCOVERY_DOCS,
                         scope: SCOPES
                     }).then(() => {
-                        console.log('GAPI initialized');
+                        console.log('GAPI initialized successfully');
                         const authInstance = gapi.auth2.getAuthInstance();
                         
                         authInstance.isSignedIn.listen((isSignedIn) => {
@@ -958,8 +963,27 @@
                         }
                     }).catch(error => {
                         console.error('Error initializing GAPI:', error);
+                        console.error('Error details:', error.details);
+                        console.error('Error result:', error.result);
+                        
                         document.getElementById('authError').style.display = 'block';
-                        document.getElementById('authError').textContent = 'Failed to initialize. Please refresh.';
+                        
+                        let errorMessage = 'Failed to initialize. ';
+                        
+                        if (error.error === 'idpiframe_initialization_failed') {
+                            errorMessage += 'Cookies are disabled or third-party cookies are blocked. Please enable cookies.';
+                        } else if (error.error === 'popup_closed_by_user') {
+                            errorMessage += 'Popup was closed. Please try again.';
+                        } else if (error.details) {
+                            errorMessage += error.details;
+                        } else {
+                            errorMessage += 'Check console for details. Possible causes:\n';
+                            errorMessage += '1. Client ID not authorized for this domain\n';
+                            errorMessage += '2. APIs not enabled in Google Cloud Console\n';
+                            errorMessage += '3. OAuth consent screen not configured';
+                        }
+                        
+                        document.getElementById('authError').textContent = errorMessage;
                     });
                 });
             },
