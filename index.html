@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Personal Financial Calendar - Cloud Edition</title>
-    <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -908,6 +907,9 @@
 
     <input type="file" id="fileInput" accept=".json" multiple>
 
+    <!-- Load Google API before our app script -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    
     <script>
         const API_KEY = 'AIzaSyCeGRt1vaUNWc_ZMBsg26wR-wfSH8C3GKU';
         const CLIENT_ID = '994220951699-f5k7j6fig37c6gb9d9igjb9jjqoio59q.apps.googleusercontent.com';
@@ -939,7 +941,17 @@
             isSyncing: false,
 
             handleClientLoad() {
-                console.log('Loading Google API...');
+                console.log('Starting Google API initialization...');
+                
+                // Check if gapi is loaded
+                if (typeof gapi === 'undefined') {
+                    console.error('gapi is not loaded!');
+                    document.getElementById('authError').style.display = 'block';
+                    document.getElementById('authError').textContent = 'Google API failed to load. Please check your internet connection and refresh.';
+                    return;
+                }
+                
+                console.log('Loading Google API client...');
                 gapi.load('client:auth2', () => {
                     console.log('Google API loaded, initializing client...');
                     console.log('Using Client ID:', CLIENT_ID);
@@ -1879,9 +1891,22 @@
             }
         };
 
-        document.addEventListener('DOMContentLoaded', () => {
-            app.handleClientLoad();
-        });
+        // Initialize when DOM and GAPI are ready
+        function initializeApp() {
+            console.log('DOM loaded, checking for gapi...');
+            
+            // Wait for gapi to be available
+            if (typeof gapi !== 'undefined') {
+                console.log('gapi is available, initializing app...');
+                app.handleClientLoad();
+            } else {
+                console.log('gapi not ready yet, waiting...');
+                // Retry after a short delay
+                setTimeout(initializeApp, 100);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initializeApp);
     </script>
 </body>
 </html>
