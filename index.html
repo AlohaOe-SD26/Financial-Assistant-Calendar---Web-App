@@ -1623,112 +1623,101 @@
                 
                 document.getElementById('dayDetailTitle').textContent = title;
                 
-                let html = `
-                    <div style="background: linear-gradient(135deg, var(--primary-color), #1d4ed8); color: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; text-align: center;">
-                        <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Ending Balance</div>
-                        <div style="font-size: 3rem; font-weight: 700;">${this.formatCurrency(dayData.balance)}</div>
-                        ${dayData.balance < this.settings.safetyBuffer ? 
-                            \`<div style="margin-top: 1rem; padding: 0.5rem 1rem; background: rgba(239, 68, 68, 0.3); border-radius: 4px; display: inline-block;">
-                                ⚠️ Below Safety Buffer
-                            </div>\` : ''}
-                    </div>
-                `;
+                let html = '<div style="background: linear-gradient(135deg, var(--primary-color), #1d4ed8); color: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; text-align: center;">';
+                html += '<div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Ending Balance</div>';
+                html += '<div style="font-size: 3rem; font-weight: 700;">' + this.formatCurrency(dayData.balance) + '</div>';
+                
+                if (dayData.balance < this.settings.safetyBuffer) {
+                    html += '<div style="margin-top: 1rem; padding: 0.5rem 1rem; background: rgba(239, 68, 68, 0.3); border-radius: 4px; display: inline-block;">';
+                    html += '⚠️ Below Safety Buffer';
+                    html += '</div>';
+                }
+                
+                html += '</div>';
                 
                 if (dayData.transactions.length === 0) {
-                    html += \`
-                        <div style="padding: 3rem; text-align: center; color: var(--text-secondary);">
-                            <div style="font-size: 3rem; margin-bottom: 1rem;">📅</div>
-                            <h3>No Transactions</h3>
-                            <p style="margin-top: 0.5rem;">No income or expenses scheduled for this day.</p>
-                        </div>
-                    \`;
+                    html += '<div style="padding: 3rem; text-align: center; color: var(--text-secondary);">';
+                    html += '<div style="font-size: 3rem; margin-bottom: 1rem;">📅</div>';
+                    html += '<h3>No Transactions</h3>';
+                    html += '<p style="margin-top: 0.5rem;">No income or expenses scheduled for this day.</p>';
+                    html += '</div>';
                 } else {
-                    const incomes = dayData.transactions.filter(t => t.type === 'income');
-                    const expenses = dayData.transactions.filter(t => t.type === 'expense');
+                    const incomes = dayData.transactions.filter(function(t) { return t.type === 'income'; });
+                    const expenses = dayData.transactions.filter(function(t) { return t.type === 'expense'; });
                     
-                    const totalIncome = incomes.reduce((sum, t) => sum + t.amount, 0);
-                    const totalExpense = expenses.reduce((sum, t) => sum + t.amount, 0);
+                    const totalIncome = incomes.reduce(function(sum, t) { return sum + t.amount; }, 0);
+                    const totalExpense = expenses.reduce(function(sum, t) { return sum + t.amount; }, 0);
                     const netChange = totalIncome - totalExpense;
                     
-                    html += \`
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
-                            <div style="background: var(--background); padding: 1rem; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">Income</div>
-                                <div style="font-size: 1.5rem; font-weight: 700; color: var(--success-color);">
-                                    ${this.formatCurrency(totalIncome)}
-                                </div>
-                            </div>
-                            <div style="background: var(--background); padding: 1rem; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">Expenses</div>
-                                <div style="font-size: 1.5rem; font-weight: 700; color: var(--danger-color);">
-                                    ${this.formatCurrency(totalExpense)}
-                                </div>
-                            </div>
-                            <div style="background: var(--background); padding: 1rem; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">Net Change</div>
-                                <div style="font-size: 1.5rem; font-weight: 700; color: ${netChange >= 0 ? 'var(--success-color)' : 'var(--danger-color)'};">
-                                    ${netChange >= 0 ? '+' : ''}${this.formatCurrency(netChange)}
-                                </div>
-                            </div>
-                        </div>
-                    \`;
+                    html += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">';
+                    
+                    html += '<div style="background: var(--background); padding: 1rem; border-radius: 8px; text-align: center;">';
+                    html += '<div style="font-size: 0.75rem; color: var(--text-secondary);">Income</div>';
+                    html += '<div style="font-size: 1.5rem; font-weight: 700; color: var(--success-color);">';
+                    html += this.formatCurrency(totalIncome);
+                    html += '</div></div>';
+                    
+                    html += '<div style="background: var(--background); padding: 1rem; border-radius: 8px; text-align: center;">';
+                    html += '<div style="font-size: 0.75rem; color: var(--text-secondary);">Expenses</div>';
+                    html += '<div style="font-size: 1.5rem; font-weight: 700; color: var(--danger-color);">';
+                    html += this.formatCurrency(totalExpense);
+                    html += '</div></div>';
+                    
+                    html += '<div style="background: var(--background); padding: 1rem; border-radius: 8px; text-align: center;">';
+                    html += '<div style="font-size: 0.75rem; color: var(--text-secondary);">Net Change</div>';
+                    html += '<div style="font-size: 1.5rem; font-weight: 700; color: ' + (netChange >= 0 ? 'var(--success-color)' : 'var(--danger-color)') + ';">';
+                    html += (netChange >= 0 ? '+' : '') + this.formatCurrency(netChange);
+                    html += '</div></div>';
+                    
+                    html += '</div>';
                     
                     if (incomes.length > 0) {
-                        html += \`
-                            <div style="margin-bottom: 2rem;">
-                                <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; color: var(--success-color);">
-                                    💰 Income (${incomes.length})
-                                </h3>
-                        \`;
+                        html += '<div style="margin-bottom: 2rem;">';
+                        html += '<h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; color: var(--success-color);">';
+                        html += '💰 Income (' + incomes.length + ')';
+                        html += '</h3>';
                         
-                        incomes.forEach(income => {
-                            html += \`
-                                <div style="background: #f0fdf4; border-left: 4px solid var(--success-color); padding: 1rem; border-radius: 4px; margin-bottom: 0.75rem;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <div>
-                                            <div style="font-weight: 600; margin-bottom: 0.25rem;">${this.escapeHtml(income.name)}</div>
-                                            <div style="font-size: 0.875rem; color: var(--text-secondary);">
-                                                ${income.frequency} • ${income.startDate ? new Date(income.startDate).toLocaleDateString() : 'No date'}
-                                            </div>
-                                        </div>
-                                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--success-color);">
-                                            +${this.formatCurrency(income.amount)}
-                                        </div>
-                                    </div>
-                                </div>
-                            \`;
-                        });
+                        for (var i = 0; i < incomes.length; i++) {
+                            var income = incomes[i];
+                            html += '<div style="background: #f0fdf4; border-left: 4px solid var(--success-color); padding: 1rem; border-radius: 4px; margin-bottom: 0.75rem;">';
+                            html += '<div style="display: flex; justify-content: space-between; align-items: center;">';
+                            html += '<div>';
+                            html += '<div style="font-weight: 600; margin-bottom: 0.25rem;">' + this.escapeHtml(income.name) + '</div>';
+                            html += '<div style="font-size: 0.875rem; color: var(--text-secondary);">';
+                            html += income.frequency;
+                            if (income.startDate) {
+                                html += ' • ' + new Date(income.startDate).toLocaleDateString();
+                            }
+                            html += '</div></div>';
+                            html += '<div style="font-size: 1.25rem; font-weight: 700; color: var(--success-color);">';
+                            html += '+' + this.formatCurrency(income.amount);
+                            html += '</div></div></div>';
+                        }
                         
-                        html += \`</div>\`;
+                        html += '</div>';
                     }
                     
                     if (expenses.length > 0) {
-                        html += \`
-                            <div style="margin-bottom: 2rem;">
-                                <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; color: var(--danger-color);">
-                                    💳 Expenses (${expenses.length})
-                                </h3>
-                        \`;
+                        html += '<div style="margin-bottom: 2rem;">';
+                        html += '<h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; color: var(--danger-color);">';
+                        html += '💳 Expenses (' + expenses.length + ')';
+                        html += '</h3>';
                         
-                        expenses.forEach(expense => {
-                            html += \`
-                                <div style="background: #fef2f2; border-left: 4px solid var(--danger-color); padding: 1rem; border-radius: 4px; margin-bottom: 0.75rem;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <div>
-                                            <div style="font-weight: 600; margin-bottom: 0.25rem;">${this.escapeHtml(expense.name)}</div>
-                                            <div style="font-size: 0.875rem; color: var(--text-secondary);">
-                                                ${expense.category || 'Uncategorized'} • ${expense.frequency}
-                                            </div>
-                                        </div>
-                                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--danger-color);">
-                                            -${this.formatCurrency(expense.amount)}
-                                        </div>
-                                    </div>
-                                </div>
-                            \`;
-                        });
+                        for (var i = 0; i < expenses.length; i++) {
+                            var expense = expenses[i];
+                            html += '<div style="background: #fef2f2; border-left: 4px solid var(--danger-color); padding: 1rem; border-radius: 4px; margin-bottom: 0.75rem;">';
+                            html += '<div style="display: flex; justify-content: space-between; align-items: center;">';
+                            html += '<div>';
+                            html += '<div style="font-weight: 600; margin-bottom: 0.25rem;">' + this.escapeHtml(expense.name) + '</div>';
+                            html += '<div style="font-size: 0.875rem; color: var(--text-secondary);">';
+                            html += (expense.category || 'Uncategorized') + ' • ' + expense.frequency;
+                            html += '</div></div>';
+                            html += '<div style="font-size: 1.25rem; font-weight: 700; color: var(--danger-color);">';
+                            html += '-' + this.formatCurrency(expense.amount);
+                            html += '</div></div></div>';
+                        }
                         
-                        html += \`</div>\`;
+                        html += '</div>';
                     }
                 }
                 
